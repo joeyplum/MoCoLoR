@@ -14,6 +14,9 @@ import numpy as np
 import sys
 sys.path.append("./sigpy_e/")
 
+# Usage
+# python recon_xdgrasp_xe_diffusion.py "data/spiral-803H-001/" --scan_res 0.5 --lambda_TV 5e-2
+
 
 # IO parameters
 parser = argparse.ArgumentParser(description='XD-GRASP recon.')
