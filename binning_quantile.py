@@ -1,12 +1,12 @@
+import argparse
+import scipy
+import sigpy as sp
+import numpy as np
 import copy
 import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use("dark_background")
 matplotlib.use('TkAgg')
-import numpy as np
-import sigpy as sp
-import scipy
-import argparse
 
 if __name__ == '__main__':
 
@@ -58,10 +58,10 @@ if __name__ == '__main__':
     # Visualize
     if show_plot:
         fig = plt.figure()
-        plt.plot(sp.to_device(waveform_filt[:np.shape(waveform_filt)[0]//2], -1))
+        plt.plot(sp.to_device(waveform_filt[:np.shape(waveform_filt)[0]], -1))
         plt.xlabel('Sample number')
         plt.ylabel('Motion')
-        plt.title('Filtered respiratory bellows motion (first 25% projections only)')
+        plt.title('Filtered respiratory bellows motion (all projections)')
         plt.show()
 
     # Find the difference waveform
@@ -109,16 +109,17 @@ if __name__ == '__main__':
             plt.rcParams["figure.figsize"] = (9, 5)
             colors = plt.cm.rainbow(np.linspace(0, 1, num_bins))
             plt.gca().set_prop_cycle(color=colors)
-            resp_sub = array[12000:15000]
-            bins_sub = bins[12000:15000]
+            resp_sub = array[10000:20000]
+            bins_sub = bins[10000:20000]
             # resp_sub = array
             # bins_sub = bins
             for b in range(num_bins):
                 resp_array = np.ma.masked_where(bins_sub != b, resp_sub)
-                plt.plot(np.arange(resp_sub.size), resp_array, label=f"Bin {b}")
+                plt.plot(np.arange(resp_sub.size),
+                         resp_array, label=f"Bin {b}")
             resp_array = np.ma.masked_where(bins_sub != num_bins, resp_sub)
             plt.plot(np.arange(resp_sub.size), resp_array,
-                    label=f"Excluded", color="g")
+                     label=f"Excluded", color="g")
             plt.legend()
             plt.title("Respiratory Binning")
             plt.xlabel("RF Excitation")
