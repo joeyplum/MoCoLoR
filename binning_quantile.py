@@ -176,13 +176,16 @@ if __name__ == '__main__':
 
         # Select only a subset of trajectories and data
         ksp_subset = ksp[:, subset, :]
-        ksp_subset = ksp_subset[:, :k, :]
+        seed_value = 111
+        np.random.seed(seed_value)
+        random_k = np.random.choice(ksp_subset.shape[1], k, replace=False)
+        ksp_subset = ksp_subset[:, random_k, :]
         ksp_save[gate_number, :, :, :] = ksp_subset
         coord_subset = coord[subset, ...]
-        coord_subset = coord_subset[:k, ...]
+        coord_subset = coord_subset[random_k, ...]
         coord_save[gate_number, ...] = coord_subset
         dcf_subset = dcf[subset, ...]
-        dcf_subset = dcf_subset[:k, ...]
+        dcf_subset = dcf_subset[random_k, ...]
         dcf_save[gate_number, ...] = dcf_subset
 
     print("Saving data using with the following dimensions...")
