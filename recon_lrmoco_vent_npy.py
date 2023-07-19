@@ -352,8 +352,9 @@ if __name__ == '__main__':
     ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
     nib.save(ni_img, fname + '/results/img_mocolor_' + str(nphase) + '_bin')
 
-    ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
-    nib.save(ni_img, fname + '/results/sv_mocolor_' + str(nphase) + '_bin')
+    if vent_flag == 1:
+        ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
+        nib.save(ni_img, fname + '/results/sv_mocolor_' + str(nphase) + '_bin')
 
-    ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
-    nib.save(ni_img, fname + '/results/jacs_mocolor_' + str(nphase) + '_bin')
+        ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
+        nib.save(ni_img, fname + '/results/jacs_mocolor_' + str(nphase) + '_bin')
