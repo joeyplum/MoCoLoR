@@ -18,7 +18,8 @@ if __name__ == '__main__':
                         help='number of respiratory phases to separate data into.')
     parser.add_argument('--fname', type=str,
                         help='folder name (e.g. data/floret-neonatal/).')
-    parser.add_argument('--plot', type=str, default='True',
+    # TODO: Fix this bool to actually work (arg parse does not support bool as written below)
+    parser.add_argument('--plot', type=bool, default=True,
                         help='show plots of waveforms, True or False.')
     args = parser.parse_args()
 
