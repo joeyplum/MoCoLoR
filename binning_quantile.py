@@ -57,11 +57,13 @@ if __name__ == '__main__':
 
     # Visualize
     if show_plot:
-        fig = plt.figure()
-        plt.plot(sp.to_device(waveform_filt[:np.shape(waveform_filt)[0]], -1))
-        plt.xlabel('Sample number')
-        plt.ylabel('Motion')
-        plt.title('Filtered respiratory bellows motion (all projections)')
+        fig = plt.figure(figsize=(15, 4), dpi=100)
+        plt.plot(sp.to_device(
+            waveform_filt[:np.shape(waveform_filt)[0]], -1), color='m')
+        plt.xlabel('Excitation number')
+        plt.ylabel('Respiratory bellows amplitude')
+        plt.title('Filtered motion according to respiratory bellows amplitude')
+        fig.savefig(folder + 'resp_bellows_wf.png', dpi=100)
         plt.show()
 
     # Find the difference waveform
@@ -105,14 +107,13 @@ if __name__ == '__main__':
             bins[mask_increasing] = num_bins - i - 1
 
         if show_plot:
-            fig = plt.figure()
-            plt.rcParams["figure.figsize"] = (9, 5)
+            fig = plt.figure(figsize=(15, 4), dpi=100)
             colors = plt.cm.rainbow(np.linspace(0, 1, num_bins))
             plt.gca().set_prop_cycle(color=colors)
-            resp_sub = array[10000:20000]
-            bins_sub = bins[10000:20000]
-            # resp_sub = array
-            # bins_sub = bins
+            # resp_sub = array[10000:20000]
+            # bins_sub = bins[10000:20000]
+            resp_sub = array
+            bins_sub = bins
             for b in range(num_bins):
                 resp_array = np.ma.masked_where(bins_sub != b, resp_sub)
                 plt.plot(np.arange(resp_sub.size),
@@ -121,9 +122,11 @@ if __name__ == '__main__':
             plt.plot(np.arange(resp_sub.size), resp_array,
                      label=f"Excluded", color="g")
             plt.legend()
-            plt.title("Respiratory Binning")
-            plt.xlabel("RF Excitation")
-            plt.ylabel("Amplitude")
+            plt.title(
+                "Binned filtered motion according to respiratory bellows amplitude")
+            plt.xlabel('Excitation number')
+            plt.ylabel('Respiratory bellows amplitude')
+            fig.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
             plt.show()
 
         # Assign output data
