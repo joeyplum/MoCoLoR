@@ -169,6 +169,17 @@ if __name__ == '__main__':
     dcf = np.load(folder + "dcf.npy")
     dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
 
+    # Look at k0 pts
+    if show_plot:
+        fig = plt.figure(figsize=(15, 4), dpi=100)
+        plt.plot(sp.to_device(
+            abs(ksp[0, :3000, 0]), -1), color='y')
+        plt.xlabel('Excitation number')
+        plt.ylabel('k0 amplitude')
+        plt.title('k0 amplitude of 0th channel')
+        fig.savefig(folder + 'k0_amplitude.png', dpi=100)
+        plt.show()
+
     # Subset
     ksp_save = np.zeros(
         (N_bins, np.shape(ksp)[0], k, np.shape(ksp)[2]), dtype="complex")
