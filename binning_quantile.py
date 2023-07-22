@@ -18,7 +18,8 @@ if __name__ == '__main__':
                         help='number of respiratory phases to separate data into.')
     parser.add_argument('--fname', type=str,
                         help='folder name (e.g. data/floret-neonatal/).')
-    parser.add_argument('--plot', type=str, default='True',
+    # TODO: Fix this bool to actually work (arg parse does not support bool as written below)
+    parser.add_argument('--plot', type=bool, default=True,
                         help='show plots of waveforms, True or False.')
     args = parser.parse_args()
 
@@ -57,11 +58,13 @@ if __name__ == '__main__':
 
     # Visualize
     if show_plot:
-        fig = plt.figure()
-        plt.plot(sp.to_device(waveform_filt[:np.shape(waveform_filt)[0]], -1))
-        plt.xlabel('Sample number')
-        plt.ylabel('Motion')
-        plt.title('Filtered respiratory bellows motion (all projections)')
+        fig = plt.figure(figsize=(15, 4), dpi=100)
+        plt.plot(sp.to_device(
+            waveform_filt[:np.shape(waveform_filt)[0]], -1), color='m')
+        plt.xlabel('Excitation number')
+        plt.ylabel('Respiratory bellows amplitude')
+        plt.title('Filtered motion according to respiratory bellows amplitude')
+        fig.savefig(folder + 'resp_bellows_wf.png', dpi=100)
         plt.show()
 
     # Find the difference waveform
@@ -105,14 +108,13 @@ if __name__ == '__main__':
             bins[mask_increasing] = num_bins - i - 1
 
         if show_plot:
-            fig = plt.figure()
-            plt.rcParams["figure.figsize"] = (9, 5)
+            fig = plt.figure(figsize=(15, 4), dpi=100)
             colors = plt.cm.rainbow(np.linspace(0, 1, num_bins))
             plt.gca().set_prop_cycle(color=colors)
-            resp_sub = array[10000:20000]
-            bins_sub = bins[10000:20000]
-            # resp_sub = array
-            # bins_sub = bins
+            # resp_sub = array[10000:20000]
+            # bins_sub = bins[10000:20000]
+            resp_sub = array
+            bins_sub = bins
             for b in range(num_bins):
                 resp_array = np.ma.masked_where(bins_sub != b, resp_sub)
                 plt.plot(np.arange(resp_sub.size),
@@ -121,9 +123,11 @@ if __name__ == '__main__':
             plt.plot(np.arange(resp_sub.size), resp_array,
                      label=f"Excluded", color="g")
             plt.legend()
-            plt.title("Respiratory Binning")
-            plt.xlabel("RF Excitation")
-            plt.ylabel("Amplitude")
+            plt.title(
+                "Binned filtered motion according to respiratory bellows amplitude")
+            plt.xlabel('Excitation number')
+            plt.ylabel('Respiratory bellows amplitude')
+            fig.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
             plt.show()
 
         # Assign output data
@@ -164,6 +168,17 @@ if __name__ == '__main__':
         (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))
     dcf = np.load(folder + "dcf.npy")
     dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
+
+    # Look at k0 pts
+    if show_plot:
+        fig = plt.figure(figsize=(15, 4), dpi=100)
+        plt.plot(sp.to_device(
+            abs(ksp[0, :3000, 0]), -1), color='y')
+        plt.xlabel('Excitation number')
+        plt.ylabel('k0 amplitude')
+        plt.title('k0 amplitude of 0th channel')
+        fig.savefig(folder + 'k0_amplitude.png', dpi=100)
+        plt.show()
 
     # Subset
     ksp_save = np.zeros(
