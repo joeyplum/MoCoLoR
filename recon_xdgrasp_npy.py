@@ -204,13 +204,13 @@ if vent_flag == 1:
 
     ni_img = nib.Nifti1Image(abs(np.moveaxis(q2, 0, -1)), affine=aff)
     nib.save(ni_img, fname + '/results/img_xdgrasp_' + str(nphase) +
-             '_bin' + str(int(recon_resolution)) + '_resolution')
+             '_bin_' + str(int(recon_resolution)) + '_resolution')
 
     if vent_flag == 1:
         ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/sv_xdgrasp_' +
-                 str(nphase) + '_bin' + str(int(recon_resolution)) + '_resolution')
+                 str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
 
         ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/jacs_xdgrasp_' + str(nphase) +
-                 '_bin' + str(int(recon_resolution)) + '_resolution')
+                 '_bin_' + str(int(recon_resolution)) + '_resolution')
