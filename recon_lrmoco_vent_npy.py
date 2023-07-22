@@ -24,6 +24,9 @@ import sigpy.mri as mr
 import os
 import nibabel as nib
 
+# Usage
+# python recon_lrmoco_vent_npy.py data/floret-740H-053/ --lambda_lr 0.05 --vent_flag 1 --recon_res 220 --scan_res 220 --mr_cflag 1
+
 if __name__ == '__main__':
 
     # IO parameters

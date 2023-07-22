@@ -14,6 +14,8 @@ import numpy as np
 import sys
 sys.path.append("./sigpy_e/")
 
+# Usage
+# python recon_xdgrasp_npy.py data/floret-740H-053/ --lambda_TV 0.05 --vent_flag 1 --recon_res 220 --scan_res 220
 
 # IO parameters
 parser = argparse.ArgumentParser(description='XD-GRASP recon.')
@@ -71,7 +73,7 @@ dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
 nf_scale = res_scale
 nf_arr = np.sqrt(np.sum(traj[0, 0, :, :]**2, axis=1))
 nf_e = np.sum(nf_arr < np.max(nf_arr)*nf_scale)
-scale = fov_scale
+scale = (scan_resolution, scan_resolution, scan_resolution)  # Added JWP
 traj[..., 0] = traj[..., 0]*scale[0]
 traj[..., 1] = traj[..., 1]*scale[1]
 traj[..., 2] = traj[..., 2]*scale[2]
