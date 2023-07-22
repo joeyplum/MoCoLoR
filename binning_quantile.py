@@ -19,8 +19,8 @@ if __name__ == '__main__':
     parser.add_argument('--fname', type=str,
                         help='folder name (e.g. data/floret-neonatal/).')
     # TODO: Fix this bool to actually work (arg parse does not support bool as written below)
-    parser.add_argument('--plot', type=bool, default=True,
-                        help='show plots of waveforms, True or False.')
+    parser.add_argument('--plot', type=int, default=1,
+                        help='show plots of waveforms, 1=True or 0=False.')
     args = parser.parse_args()
 
     N_bins = args.nbins
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     # waveform_filt = scipy.signal.medfilt(waveform,15) # median filter
 
     # Visualize
-    if show_plot:
+    if show_plot == 1:
         fig = plt.figure(figsize=(15, 4), dpi=100)
         plt.plot(sp.to_device(
             waveform_filt[:np.shape(waveform_filt)[0]], -1), color='m')
@@ -107,7 +107,7 @@ if __name__ == '__main__':
             bins[mask_decreasing] = i
             bins[mask_increasing] = num_bins - i - 1
 
-        if show_plot:
+        if show_plot == 1:
             fig = plt.figure(figsize=(15, 4), dpi=100)
             colors = plt.cm.rainbow(np.linspace(0, 1, num_bins))
             plt.gca().set_prop_cycle(color=colors)
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
 
     # Look at k0 pts
-    if show_plot:
+    if show_plot == 1:
         fig = plt.figure(figsize=(15, 4), dpi=100)
         plt.plot(sp.to_device(
             abs(ksp[0, :3000, 0]), -1), color='y')
