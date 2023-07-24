@@ -5,7 +5,7 @@ PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
 run_binning_quantile() {
-    $PYTHON_EXECUTABLE binning_quantile.py --fname data/floret-740H-053/ --nbins 10 --plot 0
+    $PYTHON_EXECUTABLE binning_quantile.py --fname data/floret-740H-053/ --nbins 20 --plot 0
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
@@ -40,13 +40,13 @@ echo "Running recon_xdgrasp_npy.py ..."
 run_recon_xdgrasp2
 echo "Finished recon_xdgrasp_npy.py"
 
-echo "Running recon_mo_npy.py ..."
+echo "Running recon_mocolor_npy.py ..."
 run_recon_mocolor1
-echo "Finished recon_mo_npy.py"
+echo "Finished recon_mocolor_npy.py"
 
-echo "Running recon_mo_npy.py ..."
+echo "Running recon_mocolor_npy.py ..."
 run_recon_mocolor2
-echo "Finished recon_mo_npy.py"
+echo "Finished recon_mocolor_npy.py"
 
 # Now, you need to make the shell script executable. Open your terminal and navigate to the directory containing the run_recons.sh file, then run the following command:
 # chmod +x run_recons.sh
