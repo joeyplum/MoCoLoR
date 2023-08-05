@@ -10,6 +10,7 @@ import argparse
 import sigpy as sp
 import scipy.ndimage as ndimage_c
 import numpy as np
+import time
 
 import sys
 sys.path.append("./sigpy_e/")
@@ -129,12 +130,15 @@ logging.basicConfig(level=logging.INFO)
 sigma = 0.4
 tau = 0.4
 for i in range(outer_iter):
+    tic = time.perf_counter()
     Y = (Y + sigma*(1/L*PFTSs*q2-wdata))/(1+sigma)
 
     q20 = q2
     q2 = np.complex64(ext.TVt_prox(q2-tau*PFTSs.H*Y, lambda_TV))
     res_norm[i] = np.linalg.norm(q2-q20)/np.linalg.norm(q2)
-    logging.info('outer iter:{}, res:{}'.format(i, res_norm[i]))
+    toc = time.perf_counter()
+    logging.info(' outer iter:{}, res:{}, {}sec'.format(
+        i, res_norm[i], int(toc - tic)))
 
     np.save(os.path.join(fname, 'prL.npy'), q2)
     # np.save(os.path.join(fname, 'prL_residual_{}.npy'.format(lambda_TV)), res_norm)
