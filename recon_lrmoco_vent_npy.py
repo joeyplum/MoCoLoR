@@ -90,6 +90,7 @@ if __name__ == '__main__':
     vent_flag = args.vent_flag
 
     print('Reconstruction started...')
+    tic_total = time.perf_counter()
 
     # data loading
     data = np.load(os.path.join(fname, 'bksp.npy'))
@@ -294,6 +295,7 @@ if __name__ == '__main__':
     # nphase = 6
     # jacobian determinant & specific ventilation
     if vent_flag == 1:
+        tic = time.perf_counter()
         print('Jacobian Determinant and Specific Ventilation...')
         jacs = []
         svs = []
@@ -307,6 +309,8 @@ if __name__ == '__main__':
         svs = np.asarray(svs)
         np.save(os.path.join(fname, 'jac_mocolor_vent.npy'), jacs)
         np.save(os.path.join(fname, 'sv_mocolor_vent.npy'), svs)
+        toc = time.perf_counter()
+        print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(fname + "/results")
@@ -367,3 +371,6 @@ if __name__ == '__main__':
         ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/jacs_mocolor_' + str(nphase) +
                  '_bin_' + str(int(recon_resolution)) + '_resolution')
+
+    toc_total = time.perf_counter()
+    print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))
