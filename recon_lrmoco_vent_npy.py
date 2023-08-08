@@ -23,6 +23,10 @@ from sigpy_e.linop_e import NFTs, Diags, DLD, Vstacks
 import sigpy.mri as mr
 import os
 import nibabel as nib
+import time
+
+# Usage
+# python recon_lrmoco_vent_npy.py data/floret-740H-053/ --lambda_lr 0.05 --vent_flag 1 --recon_res 220 --scan_res 220 --mr_cflag 1
 
 if __name__ == '__main__':
 
@@ -86,6 +90,7 @@ if __name__ == '__main__':
     vent_flag = args.vent_flag
 
     print('Reconstruction started...')
+    tic_total = time.perf_counter()
 
     # data loading
     data = np.load(os.path.join(fname, 'bksp.npy'))
@@ -225,12 +230,14 @@ if __name__ == '__main__':
             GD_step = sp.alg.GradientMethod(
                 grad, qt, .1, accelerate=False, tol=5e-7)
             for j in range(iner_iter):
+                tic = time.perf_counter()
                 # CG_step.update()
                 GD_step.update()
                 # qt = qt - 0.2*(1/L*PFTSs.H*(PFTSs*qt - wdata) + Ms.H*(Ms*qt - z0 + u0))
                 res_norm = GD_step.resid/np.linalg.norm(qt)*GD_step.alpha
-                print('superior iter:{}, outer iter:{}, inner iter:{},res:{}'.format(
-                    k, i, j, res_norm))
+                toc = time.perf_counter()
+                print('superior iter:{}, outer iter:{}, inner iter:{}, res:{}, {}sec'.format(
+                    k, i, j, res_norm, int(toc - tic)))
                 if res_norm < 5e-8:
                     break
                 res_list.append(res_norm)
@@ -288,6 +295,7 @@ if __name__ == '__main__':
     # nphase = 6
     # jacobian determinant & specific ventilation
     if vent_flag == 1:
+        tic = time.perf_counter()
         print('Jacobian Determinant and Specific Ventilation...')
         jacs = []
         svs = []
@@ -301,6 +309,8 @@ if __name__ == '__main__':
         svs = np.asarray(svs)
         np.save(os.path.join(fname, 'jac_mocolor_vent.npy'), jacs)
         np.save(os.path.join(fname, 'sv_mocolor_vent.npy'), svs)
+        toc = time.perf_counter()
+        print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(fname + "/results")
@@ -351,13 +361,16 @@ if __name__ == '__main__':
 
     ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
     nib.save(ni_img, fname + '/results/img_mocolor_' + str(nphase) +
-             '_bin' + str(int(recon_resolution)) + '_resolution')
+             '_bin_' + str(int(recon_resolution)) + '_resolution')
 
     if vent_flag == 1:
         ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/sv_mocolor_' +
-                 str(nphase) + '_bin' + str(int(recon_resolution)) + '_resolution')
+                 str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
 
         ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/jacs_mocolor_' + str(nphase) +
-                 '_bin' + str(int(recon_resolution)) + '_resolution')
+                 '_bin_' + str(int(recon_resolution)) + '_resolution')
+
+    toc_total = time.perf_counter()
+    print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))

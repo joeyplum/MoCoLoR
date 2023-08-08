@@ -10,10 +10,13 @@ import argparse
 import sigpy as sp
 import scipy.ndimage as ndimage_c
 import numpy as np
+import time
 
 import sys
 sys.path.append("./sigpy_e/")
 
+# Usage
+# python recon_xdgrasp_npy.py data/floret-740H-053/ --lambda_TV 0.05 --vent_flag 1 --recon_res 220 --scan_res 220
 
 # IO parameters
 parser = argparse.ArgumentParser(description='XD-GRASP recon.')
@@ -62,6 +65,7 @@ vent_flag = args.vent_flag
 n_ref_vent = args.n_ref_vent
 
 print('Reconstruction started.')
+tic_total = time.perf_counter()
 
 # data loading
 data = np.load(os.path.join(fname, 'bksp.npy'))
@@ -71,7 +75,7 @@ dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
 nf_scale = res_scale
 nf_arr = np.sqrt(np.sum(traj[0, 0, :, :]**2, axis=1))
 nf_e = np.sum(nf_arr < np.max(nf_arr)*nf_scale)
-scale = fov_scale
+scale = (scan_resolution, scan_resolution, scan_resolution)  # Added JWP
 traj[..., 0] = traj[..., 0]*scale[0]
 traj[..., 1] = traj[..., 1]*scale[1]
 traj[..., 2] = traj[..., 2]*scale[2]
@@ -127,18 +131,22 @@ logging.basicConfig(level=logging.INFO)
 sigma = 0.4
 tau = 0.4
 for i in range(outer_iter):
+    tic = time.perf_counter()
     Y = (Y + sigma*(1/L*PFTSs*q2-wdata))/(1+sigma)
 
     q20 = q2
     q2 = np.complex64(ext.TVt_prox(q2-tau*PFTSs.H*Y, lambda_TV))
     res_norm[i] = np.linalg.norm(q2-q20)/np.linalg.norm(q2)
-    logging.info('outer iter:{}, res:{}'.format(i, res_norm[i]))
+    toc = time.perf_counter()
+    logging.info(' outer iter:{}, res:{}, {}sec'.format(
+        i, res_norm[i], int(toc - tic)))
 
     np.save(os.path.join(fname, 'prL.npy'), q2)
     # np.save(os.path.join(fname, 'prL_residual_{}.npy'.format(lambda_TV)), res_norm)
 # q2 = np.load(os.path.join(fname, 'prL.npy'))
 # jacobian determinant & specific ventilation
 if vent_flag == 1:
+    tic = time.perf_counter()
     print('Jacobian Determinant and Specific Ventilation...')
     jacs = []
     svs = []
@@ -152,6 +160,8 @@ if vent_flag == 1:
     svs = np.asarray(svs)
     np.save(os.path.join(fname, 'jac_xdgrasp.npy'), jacs)
     np.save(os.path.join(fname, 'sv_xdgrasp.npy'), svs)
+    toc = time.perf_counter()
+    print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(fname + "/results")
@@ -202,13 +212,16 @@ if vent_flag == 1:
 
     ni_img = nib.Nifti1Image(abs(np.moveaxis(q2, 0, -1)), affine=aff)
     nib.save(ni_img, fname + '/results/img_xdgrasp_' + str(nphase) +
-             '_bin' + str(int(recon_resolution)) + '_resolution')
+             '_bin_' + str(int(recon_resolution)) + '_resolution')
 
     if vent_flag == 1:
         ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/sv_xdgrasp_' +
-                 str(nphase) + '_bin' + str(int(recon_resolution)) + '_resolution')
+                 str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
 
         ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/jacs_xdgrasp_' + str(nphase) +
-                 '_bin' + str(int(recon_resolution)) + '_resolution')
+                 '_bin_' + str(int(recon_resolution)) + '_resolution')
+
+    toc_total = time.perf_counter()
+    print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))
