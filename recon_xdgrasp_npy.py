@@ -65,6 +65,7 @@ vent_flag = args.vent_flag
 n_ref_vent = args.n_ref_vent
 
 print('Reconstruction started.')
+tic_total = time.perf_counter()
 
 # data loading
 data = np.load(os.path.join(fname, 'bksp.npy'))
@@ -146,6 +147,7 @@ for i in range(outer_iter):
 # q2 = np.load(os.path.join(fname, 'prL.npy'))
 # jacobian determinant & specific ventilation
 if vent_flag == 1:
+    tic = time.perf_counter()
     print('Jacobian Determinant and Specific Ventilation...')
     jacs = []
     svs = []
@@ -159,6 +161,8 @@ if vent_flag == 1:
     svs = np.asarray(svs)
     np.save(os.path.join(fname, 'jac_xdgrasp.npy'), jacs)
     np.save(os.path.join(fname, 'sv_xdgrasp.npy'), svs)
+    toc = time.perf_counter()
+    print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(fname + "/results")
@@ -219,3 +223,6 @@ if vent_flag == 1:
         ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/jacs_xdgrasp_' + str(nphase) +
                  '_bin_' + str(int(recon_resolution)) + '_resolution')
+
+    toc_total = time.perf_counter()
+    print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))

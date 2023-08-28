@@ -7,4 +7,10 @@ data
 # pyc
 *.pyc
 
+# Videos
+*.mp4
+
+# Images
+*.png
+
 .vscode/settings.json
