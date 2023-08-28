@@ -80,9 +80,10 @@ traj[..., 0] = traj[..., 0]*scale[0]
 traj[..., 1] = traj[..., 1]*scale[1]
 traj[..., 2] = traj[..., 2]*scale[2]
 
-traj = traj[..., :nf_e, :]
-data = data[..., :nf_e]
-dcf = dcf[..., :nf_e]
+# Optional: undersample along freq encoding - JWP 20230815
+# traj = traj[..., :nf_e, :]
+# data = data[..., :nf_e]
+# dcf = dcf[..., :nf_e]
 
 nphase, nCoil, npe, nfe = data.shape
 tshape = (np.int(np.max(traj[..., 0])-np.min(traj[..., 0])), np.int(np.max(
