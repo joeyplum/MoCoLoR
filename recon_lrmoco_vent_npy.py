@@ -130,8 +130,12 @@ if __name__ == '__main__':
     dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
     coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
-    mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
-        device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
+    # Default
+    # mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
+    #     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
+    # Modified by JWP 20230828
+    mps = ext.jsens_calib(ksp[...,:nf_e], coord[:,:nf_e, :], dcf2[...,:nf_e], device=sp.Device(
+        device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
     S = sp.linop.Multiply(tshape, mps)
 
     # registration
