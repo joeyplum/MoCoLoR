@@ -51,7 +51,7 @@ if __name__ == '__main__':
     waveform_normalized = normalize_data(waveform)
 
     # Smooth motion waveform
-    sos = scipy.signal.iirfilter(4, Wn=[0.1, 2.5], fs=200, btype="bandpass",
+    sos = scipy.signal.iirfilter(1, Wn=[0.001, 10], fs=500, btype="bandpass",
                                  ftype="butter", output="sos")
     waveform_filt = scipy.signal.sosfilt(sos, waveform)
     # waveform_filt = scipy.signal.medfilt(waveform,15) # median filter
@@ -60,15 +60,18 @@ if __name__ == '__main__':
     if show_plot == 1:
         fig = plt.figure(figsize=(15, 4), dpi=100)
         plt.plot(sp.to_device(
-            waveform_filt[:np.shape(waveform_filt)[0]], -1), color='m')
+            waveform_filt[:np.shape(waveform_filt)[0]], -1), color='c', label="Filtered")
+        plt.plot(sp.to_device(waveform[:np.shape(waveform_filt)[0]], -1), 'm.', markersize=0.15, label="Unfiltered")
         plt.xlabel('Excitation number')
         plt.ylabel('Respiratory bellows amplitude')
         plt.title('Filtered motion according to respiratory bellows amplitude')
+        plt.legend()
         fig.savefig(folder + 'resp_bellows_wf.png', dpi=100)
         plt.show()
 
-    # Find the difference waveform
+    # Find the difference waveform (i.e. the first derivative of the waveform)
     waveform_filt_diff = np.diff(waveform_filt)
+
 
     # Make binning function
 
