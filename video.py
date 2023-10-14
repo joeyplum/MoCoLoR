@@ -6,17 +6,18 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('TkAgg')
 
-single_frame = True
+single_frame = False
 
 # Create a 3D matrix of images (height, width, num_frames)
-filename = 'img_mocolor_20_bin_168_resolution.nii'
-foldername = 'data/floret-neonatal/results/'
-# filename = 'img_xdgrasp_2_bin_220_resolution.nii'
-# foldername = 'data/floret-740H-034/results/'
+filename = 'jacs_xdgrasp_20_bin_220_resolution.nii'
+foldername = '/storage/Joey/MoCoLoR/data/floret-740H-032c/results/'
 image_matrix = nib.load(foldername + filename)
 
 image_matrix = np.array(image_matrix.get_fdata())
 image_matrix = np.squeeze(image_matrix)
+
+# Optional: omit first frame (if looking at specific/jacs vent image)
+image_matrix = image_matrix[..., 1:]
 
 # Dimensions
 num_frames = image_matrix.shape[-1]
@@ -24,7 +25,7 @@ resolution = image_matrix.shape[0]
 
 # Select slice
 slice_matrix = np.flip(
-    np.rot90(image_matrix[:, resolution//2, :, :], k=3), axis=1)
+    np.rot90(image_matrix[:, (resolution//2), :, :], k=3), axis=1)
 
 # Normalize
 min_value = np.min(slice_matrix)
@@ -69,3 +70,5 @@ if single_frame:
 
 
 print("Video creation complete.")
+
+# %%
