@@ -113,8 +113,8 @@ if __name__ == "__main__":
                 amp_right = resp[peak_idx[k + 1]] - resp[valley_idx[k + s_idx]]
 
                 # Find the number of data points between peak and the base (minima)
-                n_left = valley_idx[k + s_idx] - peak_idx[k]
-                n_right = peak_idx[k + 1] - valley_idx[k + s_idx]
+                n_left = valley_idx[k + s_idx] - peak_idx[k] 
+                n_right = peak_idx[k + 1] - valley_idx[k + s_idx] 
 
                 # Select the area of interest to find the intersection point
                 resp_left = resp[peak_idx[k]: peak_idx[k] + n_left]
@@ -163,8 +163,8 @@ if __name__ == "__main__":
             plt.gca().set_prop_cycle(color=colors)
             resp_sub = resp[5000:15000]
             bins_sub = bins[5000:15000]
-            resp_sub = resp
-            bins_sub = bins
+            resp_sub = resp[:len(resp)//10]
+            bins_sub = bins[:len(resp)//10]
             for b in range(n_bins):
                 resp_array = np.ma.masked_where(bins_sub != b, resp_sub)
                 plt.plot(np.arange(resp_sub.size), resp_array, label=f"Bin {b}")
@@ -175,6 +175,7 @@ if __name__ == "__main__":
             plt.title("Respiratory Binning")
             plt.xlabel("RF Excitation")
             plt.ylabel("Amplitude")
+            plt.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
             plt.show()
             # plt.close()
 

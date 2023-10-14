@@ -59,9 +59,9 @@ if __name__ == '__main__':
     # Visualize
     if show_plot == 1:
         fig = plt.figure(figsize=(15, 4), dpi=100)
+        plt.plot(sp.to_device(waveform[:np.shape(waveform_filt)[0]//10], -1), 'm', label="Unfiltered")
         plt.plot(sp.to_device(
-            waveform_filt[:np.shape(waveform_filt)[0]], -1), color='c', label="Filtered")
-        plt.plot(sp.to_device(waveform[:np.shape(waveform_filt)[0]], -1), 'm.', markersize=0.15, label="Unfiltered")
+            waveform_filt[:np.shape(waveform_filt)[0]//10], -1), color='gold', linewidth=0.8, label="Filtered")
         plt.xlabel('Excitation number')
         plt.ylabel('Respiratory bellows amplitude')
         plt.title('Filtered motion according to respiratory bellows amplitude')
@@ -114,10 +114,10 @@ if __name__ == '__main__':
             fig = plt.figure(figsize=(15, 4), dpi=100)
             colors = plt.cm.rainbow(np.linspace(0, 1, num_bins))
             plt.gca().set_prop_cycle(color=colors)
-            # resp_sub = array[10000:20000]
-            # bins_sub = bins[10000:20000]
-            resp_sub = array
-            bins_sub = bins
+            # resp_sub = array
+            # bins_sub = bins
+            resp_sub = array[:len(array)//10]
+            bins_sub = bins[:len(bins)//10]
             for b in range(num_bins):
                 resp_array = np.ma.masked_where(bins_sub != b, resp_sub)
                 plt.plot(np.arange(resp_sub.size),
