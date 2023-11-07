@@ -5,7 +5,7 @@ PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
 run_binning_quantile() {
-    $PYTHON_EXECUTABLE binning_quantile.py --fname /storage/Joey/MoCoLoR/data/floret-740H-032c/ --nbins 10 --plot 1
+    $PYTHON_EXECUTABLE binning_hilbert.py --fname /storage/Joey/MoCoLoR/data/floret-740H-032c/ --nbins 6 --plot 1
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
@@ -52,7 +52,7 @@ run_recon_nufft
 echo "Finished recon_dcf_nufft_npy.py"
 
 echo "Running recon_xdgrasp_npy.py ..."
-run_recon_xdgrasp1
+# run_recon_xdgrasp1
 echo "Finished recon_xdgrasp_npy.py"
 
 echo "Running recon_xdgrasp_npy.py ..."

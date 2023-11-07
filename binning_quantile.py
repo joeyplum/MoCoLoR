@@ -148,6 +148,12 @@ if __name__ == '__main__':
     print("Number of projections per respiratory bin:")
     print(np.sum(resp_gated, axis=1))
 
+    # Optional: Merge bins 1 and 2 - DOES NOT WORK
+    # resp_gated_merged = np.zeros((2, np.shape(resp_gated)[1]))
+    # resp_gated_merged[0, :] = np.array(resp_gated[0]) + np.array(resp_gated[1])
+    # resp_gated_merged[1, :] = np.array(resp_gated[2]) + np.array(resp_gated[3])
+    # resp_gated = resp_gated_merged.astype(int)
+
     # Estimate "goodness of breathing"
     range_bins = np.ptp(np.sum(resp_gated, axis=1))
     range_norm = range_bins/np.max(np.sum(resp_gated, axis=1))

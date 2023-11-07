@@ -234,8 +234,11 @@ if __name__ == "__main__":
     print("(1 = awful)")
 
     # Subset value to have same number proj in each insp exp
-    k = np.min(np.sum(resp_gated, axis=1))
-    print("Number of points per bin selected for use: " + str(k))
+    # k = np.min(np.sum(resp_gated, axis=1))
+    # print("Number of points per bin selected for use: " + str(k))
+
+    k = np.max(np.sum(resp_gated, axis=1))
+    print("WARNING: USING THE MAX of points per bin selected for use: " + str(k))
 
     # Load data
     ksp = np.load(folder + "ksp.npy")
@@ -253,6 +256,7 @@ if __name__ == "__main__":
 ksp_save = np.zeros(
     (N_bins, np.shape(ksp)[0], k, np.shape(ksp)[2]), dtype="complex")
 coord_save = np.zeros((N_bins, k, np.shape(coord)[1], np.shape(coord)[2]))
+# coord_save += 5 # Add 5 to initial array so that all the "empty points" are dumped on far edges of k-space
 dcf_save = np.zeros((N_bins, k,  np.shape(dcf)[1]), dtype="complex")
 
 for gate_number in range(N_bins):
@@ -262,7 +266,9 @@ for gate_number in range(N_bins):
     ksp_subset = ksp[:, subset, :]
     seed_value = 111
     np.random.seed(seed_value)
-    random_k = np.random.choice(ksp_subset.shape[1], k, replace=False)
+    # random_k = np.random.choice(ksp_subset.shape[1], k, replace=False)
+    random_k = np.random.choice(ksp_subset.shape[1], k, replace=True)
+    print("WARNING: np.random.choice(..., replace=True): REPLACING VALUES = TRUE.")
     ksp_subset = ksp_subset[:, random_k, :]
     ksp_save[gate_number, :, :, :] = ksp_subset
     coord_subset = coord[subset, ...]
