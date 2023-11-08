@@ -66,6 +66,8 @@ if __name__ == "__main__":
     binner.sort_fixed_bin(N_bins, 2)
     if show_plot == 1:
         binner.plot_fixed_bin(N_bins)
+        plt.suptitle("Respiratory Binning")
+        plt.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
         plt.show()
     resp_gated = (binner.bin_hot).T
     resp_gated = np.array(resp_gated, dtype=bool)
