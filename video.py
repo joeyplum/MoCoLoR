@@ -9,7 +9,7 @@ matplotlib.use('TkAgg')
 single_frame = False
 
 # Create a 3D matrix of images (height, width, num_frames)
-filename = 'sv_mocolor_6_bin_220_resolution.nii'
+filename = 'img_mocolor_10_bin_352_resolution.nii'
 foldername = '/storage/Joey/MoCoLoR/data/floret-740H-032c/results/'
 image_matrix = nib.load(foldername + filename)
 

@@ -144,14 +144,68 @@ for i in range(outer_iter):
     # np.save(os.path.join(fname, 'prL.npy'), q2)
     # np.save(os.path.join(fname, 'prL_residual_{}.npy'.format(lambda_TV)), res_norm)
 # q2 = np.load(os.path.join(fname, 'prL.npy'))
+
+q2 = np.abs(np.squeeze(q2))
+q2 = q2/np.max(q2)
+
+# Check whether a specified save data path exists
+results_exist = os.path.exists(fname + "/results")
+
+# Create a new directory because the results path does not exist
+if not results_exist:
+    os.makedirs(fname + "/results")
+    print("A new directory inside: " + fname +
+            " called 'results' has been created.")
+
+# Save images as Nifti files
+# Build an array using matrix multiplication
+scaling_affine = np.array([[1, 0, 0, 0],
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]])
+
+# Rotate gamma radians about axis i
+cos_gamma = np.cos(0)
+sin_gamma = np.sin(0)
+rotation_affine_1 = np.array([[1, 0, 0, 0],
+                                [0, cos_gamma, -sin_gamma,  0],
+                                [0, sin_gamma, cos_gamma, 0],
+                                [0, 0, 0, 1]])
+cos_gamma = np.cos(np.pi)
+sin_gamma = np.sin(np.pi)
+rotation_affine_2 = np.array([[cos_gamma, 0, sin_gamma, 0],
+                                [0, 1, 0, 0],
+                                [-sin_gamma, 0, cos_gamma, 0],
+                                [0, 0, 0, 1]])
+cos_gamma = np.cos(0)
+sin_gamma = np.sin(0)
+rotation_affine_3 = np.array([[cos_gamma, -sin_gamma, 0, 0],
+                                [sin_gamma, cos_gamma, 0, 0],
+                                [0, 0, 1, 0],
+                                [0, 0, 0, 1]])
+rotation_affine = rotation_affine_1.dot(
+    rotation_affine_2.dot(rotation_affine_3))
+
+# Apply translation
+translation_affine = np.array([[1, 0, 0, 0],
+                                [0, 1, 0, 0],
+                                [0, 0, 1, 0],
+                                [0, 0, 0, 1]])
+
+# Multiply matrices together
+aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
+
+ni_img = nib.Nifti1Image(abs(np.moveaxis(q2, 0, -1)), affine=aff)
+nib.save(ni_img, fname + '/results/img_nufft_' + str(nphase) +
+            '_bin_' + str(int(recon_resolution)) + '_resolution')
+
 # jacobian determinant & specific ventilation
 if vent_flag == 1:
     tic = time.perf_counter()
     print('Jacobian Determinant and Specific Ventilation...')
     jacs = []
     svs = []
-    q2 = np.abs(np.squeeze(q2))
-    q2 = q2/np.max(q2)
+    
     for i in range(nphase):
         jac, sv = reg.ANTsJac(np.abs(q2[n_ref_vent]), np.abs(q2[i]))
         jacs.append(jac)
@@ -163,65 +217,15 @@ if vent_flag == 1:
     toc = time.perf_counter()
     print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
-    # Check whether a specified save data path exists
-    results_exist = os.path.exists(fname + "/results")
 
-    # Create a new directory because the results path does not exist
-    if not results_exist:
-        os.makedirs(fname + "/results")
-        print("A new directory inside: " + fname +
-              " called 'results' has been created.")
+if vent_flag == 1:
+    ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
+    nib.save(ni_img, fname + '/results/sv_nufft_' +
+                str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
 
-    # Save images as Nifti files
-    # Build an array using matrix multiplication
-    scaling_affine = np.array([[1, 0, 0, 0],
-                               [0, 1, 0, 0],
-                               [0, 0, 1, 0],
-                               [0, 0, 0, 1]])
+    ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
+    nib.save(ni_img, fname + '/results/jacs_nufft_' + str(nphase) +
+                '_bin_' + str(int(recon_resolution)) + '_resolution')
 
-    # Rotate gamma radians about axis i
-    cos_gamma = np.cos(0)
-    sin_gamma = np.sin(0)
-    rotation_affine_1 = np.array([[1, 0, 0, 0],
-                                  [0, cos_gamma, -sin_gamma,  0],
-                                  [0, sin_gamma, cos_gamma, 0],
-                                  [0, 0, 0, 1]])
-    cos_gamma = np.cos(np.pi)
-    sin_gamma = np.sin(np.pi)
-    rotation_affine_2 = np.array([[cos_gamma, 0, sin_gamma, 0],
-                                  [0, 1, 0, 0],
-                                  [-sin_gamma, 0, cos_gamma, 0],
-                                  [0, 0, 0, 1]])
-    cos_gamma = np.cos(0)
-    sin_gamma = np.sin(0)
-    rotation_affine_3 = np.array([[cos_gamma, -sin_gamma, 0, 0],
-                                  [sin_gamma, cos_gamma, 0, 0],
-                                  [0, 0, 1, 0],
-                                  [0, 0, 0, 1]])
-    rotation_affine = rotation_affine_1.dot(
-        rotation_affine_2.dot(rotation_affine_3))
-
-    # Apply translation
-    translation_affine = np.array([[1, 0, 0, 0],
-                                   [0, 1, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]])
-
-    # Multiply matrices together
-    aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
-
-    ni_img = nib.Nifti1Image(abs(np.moveaxis(q2, 0, -1)), affine=aff)
-    nib.save(ni_img, fname + '/results/img_nufft_' + str(nphase) +
-             '_bin_' + str(int(recon_resolution)) + '_resolution')
-
-    if vent_flag == 1:
-        ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
-        nib.save(ni_img, fname + '/results/sv_nufft_' +
-                 str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
-
-        ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
-        nib.save(ni_img, fname + '/results/jacs_nufft_' + str(nphase) +
-                 '_bin_' + str(int(recon_resolution)) + '_resolution')
-
-    toc_total = time.perf_counter()
-    print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))
+toc_total = time.perf_counter()
+print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))
