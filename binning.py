@@ -1,3 +1,5 @@
+import sigpy as sp
+import scipy
 import copy
 import matplotlib.pyplot as plt
 import numpy as np
@@ -87,7 +89,8 @@ def bin_waveform(resp_in, n_bins, resp_min, resp_max, prominence):
 
             # Select the area of interest to find the intersection point
             resp_left = resp[peak_idx[k]: peak_idx[k] + n_left]
-            resp_right = resp[valley_idx[k + s_idx]: valley_idx[k + s_idx] + n_right]
+            resp_right = resp[valley_idx[k + s_idx]
+                : valley_idx[k + s_idx] + n_right]
 
             # Intersection points
             bin_amp = amp_left / (n_bins // 2)  # Bin size for each compartment
@@ -155,16 +158,12 @@ def bin_waveform(resp_in, n_bins, resp_min, resp_max, prominence):
     return resp_gated
 
 
-
-
-
 # %% Folder
-
-N_bins = 10
+N_bins = 6
 
 folder = "data/floret/"
 folder = "data/floret-walkup/"
-# folder = "data/floret-plummer/"
+folder = "data/floret-740H-053/"
 
 # # %% TEST make equal data per bin
 # import scipy
@@ -223,7 +222,7 @@ folder = "data/floret-walkup/"
 # insp_wf_sort = np.sort(insp_wf)
 # insp_wf_sort_idx = np.argsort(insp_wf)
 # # Bin Data
-# insp_bins = np.zeros((N_bins_per_wf, N_pts_per_bin), dtype="int") 
+# insp_bins = np.zeros((N_bins_per_wf, N_pts_per_bin), dtype="int")
 # # print(bins.shape)
 # for b in range(N_bins_per_wf):
 #     for j in range(N_pts_per_bin):
@@ -266,19 +265,21 @@ folder = "data/floret-walkup/"
 # np.save(folder + "bdcf.npy", dcf_save)
 
 # %% Read in motion waveform
-import scipy
-import sigpy as sp
 # Load motion
 motion_load = np.array(np.load(folder + "motion.npy"))
 motion_load = np.squeeze(motion_load)
 if np.size(np.shape(motion_load)) != 2:
     print('Unexpected motion data dimensions.')
 waveform = np.reshape(motion_load, (np.shape(motion_load)[
-                        0]*np.shape(motion_load)[1]))
+    0]*np.shape(motion_load)[1]))
 
 # Optional, normalize waveform
+
+
 def normalize_data(x):
     return (x - np.min(x)) / (np.max(x) - np.min(x))
+
+
 waveform_normalized = normalize_data(waveform)
 
 # Visualize motion
@@ -291,7 +292,7 @@ plt.show()
 
 # Smooth motion waveform
 sos = scipy.signal.iirfilter(4, Wn=[0.1, 2.5], fs=200, btype="bandpass",
-                                ftype="butter", output="sos")
+                             ftype="butter", output="sos")
 waveform_filt = scipy.signal.sosfilt(sos, waveform)
 # waveform_filt = scipy.signal.medfilt(waveform,15) # median filter
 
@@ -303,26 +304,29 @@ plt.title('Filtered respiratory bellows motion (first 25% projections only)')
 plt.show()
 
 # Start binning
-resp_gated = bin_waveform( waveform_filt, n_bins=N_bins, resp_min=-10000, resp_max=10000, prominence=2000)
+resp_gated = bin_waveform(waveform_filt, n_bins=N_bins,
+                          resp_min=-10000, resp_max=10000, prominence=2000)
 print(np.sum(resp_gated, axis=1))
 
 # Subset value to have same number proj in each insp exp
-k=np.min(np.sum(resp_gated, axis=1))
+k = np.min(np.sum(resp_gated, axis=1))
 print("Number of points per bin selected: " + str(k))
 
 # Load data and subset
 ksp = np.load(folder + "ksp.npy")
-ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[1]*np.shape(ksp)[2], np.shape(ksp)[3]))
+ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[
+                 1]*np.shape(ksp)[2], np.shape(ksp)[3]))
 print(np.shape(ksp))
 coord = np.load(folder + "coord.npy")
-coord = coord.reshape((np.shape(coord)[0]*np.shape(coord)[1],np.shape(coord)[2], np.shape(coord)[3]))
+coord = coord.reshape(
+    (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))
 dcf = np.load(folder + "dcf.npy")
-dcf = dcf.reshape((np.shape(dcf)[0]* np.shape(dcf)[1],np.shape(dcf)[2]))
-
+dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
 
 
 # Subset
-ksp_save = np.zeros((N_bins, np.shape(ksp)[0], k, np.shape(ksp)[2]), dtype="complex")
+ksp_save = np.zeros(
+    (N_bins, np.shape(ksp)[0], k, np.shape(ksp)[2]), dtype="complex")
 coord_save = np.zeros((N_bins, k, np.shape(coord)[1], np.shape(coord)[2]))
 dcf_save = np.zeros((N_bins, k,  np.shape(dcf)[1]), dtype="complex")
 
@@ -335,7 +339,7 @@ for gate_number in range(N_bins):
     ksp_subset = ksp_subset[:, :k, :]
     ksp_save[gate_number, :, :, :] = ksp_subset
     coord_subset = coord[subset, ...]
-    coord_subset = coord_subset[:k,...]
+    coord_subset = coord_subset[:k, ...]
     coord_save[gate_number, ...] = coord_subset
     dcf_subset = dcf[subset, ...]
     dcf_subset = dcf_subset[:k, ...]
@@ -344,7 +348,6 @@ for gate_number in range(N_bins):
 print(np.shape(ksp_save))
 print(np.shape(coord_save))
 print(np.shape(dcf_save))
-np.save(folder + "bksp.npy", ksp_save)
-np.save(folder + "bcoord.npy", coord_save)
-np.save(folder + "bdcf.npy", dcf_save)
-
+# np.save(folder + "bksp.npy", ksp_save)
+# np.save(folder + "bcoord.npy", coord_save)
+# np.save(folder + "bdcf.npy", dcf_save)
