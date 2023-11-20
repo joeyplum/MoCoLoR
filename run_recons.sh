@@ -15,32 +15,32 @@ run_recon_xdgrasp1() {
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_xdgrasp2() {
-    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-740H-017v2/ --lambda_TV 0.05 --vent_flag 1 --recon_res 120 --scan_res 220
+    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-186H-482/ --lambda_TV 0.05 --vent_flag 1 --recon_res 120 --scan_res 220
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_xdgrasp3() {
-    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-740H-017v2/ --lambda_TV 0.05 --vent_flag 1 --recon_res 150 --scan_res 220
+    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-186H-482/ --lambda_TV 0.05 --vent_flag 1 --recon_res 150 --scan_res 220
 }
 
 # Function to run the recon_mocolor_npy.py script with given arguments
 run_recon_mocolor1() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-740H-017v2/ --lambda_lr 0.05 --vent_flag 1 --recon_res 220 --scan_res 220 --mr_cflag 1
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-186H-482/ --lambda_lr 0.05 --vent_flag 1 --recon_res 352 --scan_res 220 --mr_cflag 1
 }
 
 # Function to run the recon_mocolor_npy.py script with given arguments
 run_recon_mocolor2() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-740H-017v2/ --lambda_lr 0.05 --vent_flag 1 --recon_res 120 --scan_res 220 --mr_cflag 1
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-186H-482/ --lambda_lr 0.05 --vent_flag 1 --recon_res 120 --scan_res 220 --mr_cflag 1
 }
 
 # Function to run the recon_mocolor_npy.py script with given arguments
 run_recon_mocolor3() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-740H-017v2/ --lambda_lr 0.05 --vent_flag 1 --recon_res 150 --scan_res 220 --mr_cflag 1
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-186H-482/ --lambda_lr 0.05 --vent_flag 1 --recon_res 150 --scan_res 220 --mr_cflag 1
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_nufft() {
-    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py /storage/Joey/MoCoLoR/data/floret-740H-017v2/ --lambda_TV 0 --vent_flag 0 --recon_res 220 --scan_res 220
+    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py /storage/Joey/MoCoLoR/data/floret-186H-482/ --lambda_TV 0 --vent_flag 0 --recon_res 352 --scan_res 220
 }
 
 echo "Running binning_quantile.py ..."
