@@ -162,6 +162,7 @@ if vent_flag == 1:
         jac, sv = reg.ANTsJac(np.abs(q2[n_ref_vent]), np.abs(q2[i]))
         jacs.append(jac)
         svs.append(sv)
+        print('ANTsJac computation completed for phase: ' + str(i))
     jacs = np.asarray(jacs)
     svs = np.asarray(svs)
     np.save(os.path.join(fname, 'jac_xdgrasp.npy'), jacs)
