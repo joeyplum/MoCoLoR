@@ -66,7 +66,7 @@ if __name__ == "__main__":
 
     # Start binning
     binner = hb(waveform_filt)
-    binner.sort_dynamic_bin(N_bins, N_projections, stdev=2)
+    binner.sort_dynamic_bin(N_bins, N_projections, stdev=8)
     if show_plot == 1:
         binner.plot_dynamic_bin(N_bins)
         plt.suptitle("Respiratory Binning")
