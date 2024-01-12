@@ -14,3 +14,7 @@ data/
 *.png
 
 .vscode/settings.json
+
+# Segmentation
+segmentation/model.200.hdf5
+segmentation/UTE_FLORET_LungSeg.py
