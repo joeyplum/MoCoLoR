@@ -18,3 +18,5 @@ data/
 # Segmentation
 segmentation/model.200.hdf5
 segmentation/UTE_FLORET_LungSeg.py
+experimental/UTE_FLORET_LungSeg.py
+segmentation/segmentation_ute.py
