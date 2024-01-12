@@ -5,7 +5,7 @@ PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
 run_binning_quantile() {
-    $PYTHON_EXECUTABLE binning_hilbert_dynamic.py --fname data/floret-740H-032c/ --nbins 10 --plot 1 --nprojections 10000
+    $PYTHON_EXECUTABLE binning/binning_hilbert_dynamic.py --fname data/floret-740H-032c/ --nbins 10 --plot 1 --nprojections 10000
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
