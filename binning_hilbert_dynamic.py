@@ -1,3 +1,5 @@
+from scipy.signal import find_peaks
+from functions.HilbertBinning import HilbertBinning as hb
 import argparse
 import scipy
 import sigpy as sp
@@ -7,8 +9,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use("dark_background")
 matplotlib.use('TkAgg')
-from functions.HilbertBinning import HilbertBinning as hb
-from scipy.signal import find_peaks
 
 if __name__ == "__main__":
 
@@ -32,24 +32,22 @@ if __name__ == "__main__":
     show_plot = args.plot
     N_projections = args.nprojections
 
-
     # Load motion
     motion_load = np.array(np.load(folder + "motion.npy"))
     motion_load = np.squeeze(motion_load)
     if np.size(np.shape(motion_load)) != 2:
         print('Unexpected motion data dimensions.')
     waveform = np.reshape(motion_load, (np.shape(motion_load)[
-                            0]*np.shape(motion_load)[1]))
+        0]*np.shape(motion_load)[1]))
 
     # Optional, normalize waveform
     def normalize_data(x):
         return (x - np.min(x)) / (np.max(x) - np.min(x))
     waveform_normalized = normalize_data(waveform)
 
-
     # Smooth motion waveform
     sos = scipy.signal.iirfilter(1, Wn=[0.001, 10], fs=500, btype="bandpass",
-                                    ftype="butter", output="sos")
+                                 ftype="butter", output="sos")
     waveform_filt = scipy.signal.sosfilt(sos, waveform)
     # waveform_filt = scipy.signal.medfilt(waveform,3) # median filter
 
@@ -57,7 +55,8 @@ if __name__ == "__main__":
         fig = plt.figure(figsize=(15, 4), dpi=100)
         plt.plot(sp.to_device(
             waveform_filt[:np.shape(waveform_filt)[0]], -1), color='c')
-        plt.plot(sp.to_device(waveform[:np.shape(waveform_filt)[0]], -1), 'm.', markersize=0.2)
+        plt.plot(sp.to_device(
+            waveform[:np.shape(waveform_filt)[0]], -1), 'm.', markersize=0.2)
         plt.xlabel('Excitation number')
         plt.ylabel('Respiratory bellows amplitude')
         plt.title('Filtered motion according to respiratory bellows amplitude')
@@ -83,7 +82,7 @@ if __name__ == "__main__":
     range_bins = np.ptp(np.sum(resp_gated, axis=1))
     range_norm = range_bins/np.max(np.sum(resp_gated, axis=1))
     print("Normalized variability of projections in each bin: " +
-            str(np.round(range_norm, 3)))
+          str(np.round(range_norm, 3)))
     print("(normalized to max number of projections per bin)")
     print("(0 = incredible)")
     print("(1 = awful)")
@@ -141,5 +140,3 @@ print('bcoord: ' + str(np.shape(coord_save)))
 np.save(folder + "bdcf.npy", dcf_save)
 print('bdcf: ' + str(np.shape(dcf_save)))
 print("...completed.")
-
-
