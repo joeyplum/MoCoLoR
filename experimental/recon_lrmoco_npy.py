@@ -225,6 +225,7 @@ if __name__ == '__main__':
             jac, sv = reg.ANTsJac(np.abs(qt[n_ref_vent]), np.abs(qt[i]))
             jacs.append(jac)
             svs.append(sv)
+            print('ANTsJac computation completed for phase: ' + str(i))
         jacs = np.asarray(jacs)
         svs = np.asarray(svs)
         if mr_cflag==1:

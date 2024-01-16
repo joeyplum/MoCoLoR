@@ -80,9 +80,10 @@ traj[..., 0] = traj[..., 0]*scale[0]
 traj[..., 1] = traj[..., 1]*scale[1]
 traj[..., 2] = traj[..., 2]*scale[2]
 
-traj = traj[..., :nf_e, :]
-data = data[..., :nf_e]
-dcf = dcf[..., :nf_e]
+# Optional: undersample along freq encoding - JWP 20230815
+# traj = traj[..., :nf_e, :]
+# data = data[..., :nf_e]
+# dcf = dcf[..., :nf_e]
 
 nphase, nCoil, npe, nfe = data.shape
 tshape = (np.int(np.max(traj[..., 0])-np.min(traj[..., 0])), np.int(np.max(
@@ -101,7 +102,12 @@ ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)), (nCoil, nphase*npe, nfe))
 dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
 coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
-mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(0), ishape=tshape)
+# Default
+# mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
+#     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
+# Modified by JWP 20230828
+mps = ext.jsens_calib(ksp[...,:nf_e], coord[:,:nf_e, :], dcf2[...,:nf_e], device=sp.Device(
+    device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
 S = sp.linop.Multiply(tshape, mps)
 
 # recon
@@ -156,6 +162,7 @@ if vent_flag == 1:
         jac, sv = reg.ANTsJac(np.abs(q2[n_ref_vent]), np.abs(q2[i]))
         jacs.append(jac)
         svs.append(sv)
+        print('ANTsJac computation completed for phase: ' + str(i))
     jacs = np.asarray(jacs)
     svs = np.asarray(svs)
     np.save(os.path.join(fname, 'jac_xdgrasp.npy'), jacs)

@@ -13,9 +13,6 @@ if __name__ == '__main__':
     # IO parameters
     parser = argparse.ArgumentParser(
         description='motion compensated low rank constrained recon.')
-
-    parser.add_argument('--nbins', type=int, default=10,
-                        help='number of respiratory phases to separate data into.')
     parser.add_argument('--fname', type=str,
                         help='folder name (e.g. data/floret-neonatal/).')
     # TODO: Fix this bool to actually work (arg parse does not support bool as written below)
@@ -23,17 +20,10 @@ if __name__ == '__main__':
                         help='show plots of waveforms, 1=True or 0=False.')
     args = parser.parse_args()
 
-    N_bins = args.nbins
     folder = args.fname
     show_plot = args.plot
 
     # %% Generate binned data
-
-    # folder = "data/floret-neonatal/"
-    # folder = "data/floret-803H-023/"
-    # folder = "data/floret-740H-034/"
-    # folder = "data/floret-186H-479/"
-    # folder = "data/floret-upper-airway/"
 
     # Load motion
     motion_load = np.array(np.load(folder + "motion.npy"))
@@ -42,6 +32,14 @@ if __name__ == '__main__':
         print('Unexpected motion data dimensions.')
     waveform = np.reshape(motion_load, (np.shape(motion_load)[
         0]*np.shape(motion_load)[1]))
+
+    # Load the manual binning file
+    include = scipy.io.loadmat(folder + "binning.mat")['bool'].astype(bool)
+    exclude = scipy.io.loadmat(folder + "binning.mat")['excludeInd'].astype(bool)[:,0]
+    N_bins = len(include)
+
+    # Exclude data points from the manual binning file
+    waveform = waveform[~exclude]
 
     # Optional, normalize waveform
 
@@ -67,81 +65,9 @@ if __name__ == '__main__':
         fig.savefig(folder + 'resp_bellows_wf.png', dpi=100)
         plt.show()
 
-    # Find the difference waveform
-    waveform_filt_diff = np.diff(waveform_filt)
-
-    # Make binning function
-
-    def quantile_bins(array, num_bins=10):
-        """quantile_bins
-
-        Args:
-            array (Array): Input array (1xN).
-            num_bins (int): Number of bins (must be divisible by two).
-
-        Returns:
-            out: (Array) (N_bins x N) Indices of output array
-        """
-        if num_bins % 2:
-            raise ValueError(
-                f"Number of bins should be even: Current value: {num_bins}!")
-
-        # Find the difference vector to see if increasing/decreasing
-        array_diff = np.diff(array)
-        array_diff = np.append(array_diff, 0)
-
-        # Calculate the quantile values
-        num_bins_halved = num_bins//2
-        quantiles = np.linspace(0, 1, num_bins_halved + 1)
-        bin_values = np.quantile(array, quantiles)
-
-        # Allocate array elements to bins
-        bins = np.zeros_like(array, dtype=int)
-        for i in range(num_bins_halved):
-            mask = np.logical_and(
-                array >= bin_values[i], array <= bin_values[i+1])
-            mask_decreasing = np.array(mask)
-            mask_decreasing[array_diff < 0] = 0
-            mask_increasing = np.array(mask)
-            mask_increasing[array_diff >= 0] = 0
-            bins[mask_decreasing] = i
-            bins[mask_increasing] = num_bins - i - 1
-
-        if show_plot == 1:
-            fig = plt.figure(figsize=(15, 4), dpi=100)
-            colors = plt.cm.rainbow(np.linspace(0, 1, num_bins))
-            plt.gca().set_prop_cycle(color=colors)
-            # resp_sub = array[10000:20000]
-            # bins_sub = bins[10000:20000]
-            resp_sub = array
-            bins_sub = bins
-            for b in range(num_bins):
-                resp_array = np.ma.masked_where(bins_sub != b, resp_sub)
-                plt.plot(np.arange(resp_sub.size),
-                         resp_array, label=f"Bin {b}")
-            resp_array = np.ma.masked_where(bins_sub != num_bins, resp_sub)
-            plt.plot(np.arange(resp_sub.size), resp_array,
-                     label=f"Excluded", color="g")
-            plt.legend()
-            plt.title(
-                "Binned filtered motion according to respiratory bellows amplitude")
-            plt.xlabel('Excitation number')
-            plt.ylabel('Respiratory bellows amplitude')
-            fig.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
-            plt.show()
-
-        # Assign output data
-        out = []
-        # print(bins.shape)
-        for b in range(num_bins):
-            idx = bins == b
-            # resp_gated.append(resp_in[idx])
-            out.append(idx)
-
-        return out
 
     # Bin data
-    resp_gated = quantile_bins(waveform_filt, num_bins=N_bins)
+    resp_gated = include
     print("Number of projections per respiratory bin:")
     print(np.sum(resp_gated, axis=1))
 
@@ -168,6 +94,11 @@ if __name__ == '__main__':
         (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))
     dcf = np.load(folder + "dcf.npy")
     dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
+
+    # Perform exlusions
+    ksp = ksp[:,~exclude, :]
+    coord = coord[~exclude, :, :]
+    dcf = dcf[~exclude, :]
 
     # Look at k0 pts
     if show_plot == 1:
@@ -211,3 +142,5 @@ if __name__ == '__main__':
     np.save(folder + "bdcf.npy", dcf_save)
     print('bdcf: ' + str(np.shape(dcf_save)))
     print("...completed.")
+
+# %%
