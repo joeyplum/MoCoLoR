@@ -5,27 +5,27 @@ PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
 run_binning_quantile() {
-    $PYTHON_EXECUTABLE binning_hilbert_dynamic.py --fname data/floret-186H-496/ --nbins 10 --plot 1 --nprojections 14000
+    $PYTHON_EXECUTABLE binning_hilbert_dynamic.py --fname data/floret-740H-008v2/ --nbins 10 --plot 1 --nprojections 10000
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_xdgrasp1() {
-    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py data/floret-186H-496/ --lambda_TV 0.05 --vent_flag 1 --recon_res 150 --scan_res 220
+    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py data/floret-740H-008v2/ --lambda_TV 0.05 --vent_flag 1 --recon_res 150 --scan_res 220
 }
 
 # Function to run the recon_mocolor_npy.py script with given arguments
 run_recon_mocolor1() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py data/floret-186H-496/ --lambda_lr 0.05 --vent_flag 1 --recon_res 150 --scan_res 220 --mr_cflag 1
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py data/floret-740H-008v2/ --lambda_lr 0.05 --vent_flag 1 --recon_res 150 --scan_res 220 --mr_cflag 1
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_nufft() {
-    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py data/floret-186H-496/ --lambda_TV 0 --vent_flag 0 --recon_res 150 --scan_res 220
+    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py data/floret-740H-008v2/ --lambda_TV 0 --vent_flag 0 --recon_res 150 --scan_res 220
 }
 
 # Generate a mask
 run_segmentation() {
-    python segmentation/segmentation_ute.py --fname data/floret-186H-496/results/ --filename img_mocolor_10_bin_150_resolution.nii --plot 0 --mask 1
+    python segmentation/segmentation_ute.py --fname data/floret-740H-008v2/results/ --filename img_mocolor_10_bin_150_resolution.nii --plot 0 --mask 1
 }
 
 echo "Running binning_quantile.py ..."
