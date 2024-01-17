@@ -107,9 +107,10 @@ if __name__ == '__main__':
     traj[..., 2] = traj[..., 2]*scale[2]
 
     # Optional: undersample along freq encoding - JWP 20230815
-    # traj = traj[..., :nf_e, :]
-    # data = data[..., :nf_e]
-    # dcf = dcf[..., :nf_e]
+    traj = traj[..., :nf_e, :]
+    data = data[..., :nf_e]
+    dcf = dcf[..., :nf_e]
+    print("Number of frequency encodes after trimming: " + str(nf_e))
 
     nphase, nCoil, npe, nfe = data.shape
     tshape = (int(np.max(traj[..., 0])-np.min(traj[..., 0])), int(np.max(
@@ -128,13 +129,14 @@ if __name__ == '__main__':
     ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)),
                      (nCoil, nphase*npe, nfe))
     dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
+    dcf2 = np.ones_like(dcf2)  # TODO comment out
     coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
     # Default
     # mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
     #     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
     # Modified by JWP 20230828
-    mps = ext.jsens_calib(ksp[...,:nf_e], coord[:,:nf_e, :], dcf2[...,:nf_e], device=sp.Device(
+    mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf2[..., :nf_e], device=sp.Device(
         device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
     S = sp.linop.Multiply(tshape, mps)
 
