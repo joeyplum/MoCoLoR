@@ -70,7 +70,8 @@ if __name__ == "__main__":
         binner.plot_dynamic_bin(N_bins)
         plt.suptitle("Respiratory binning for N = " +
                      str(N_projections) + " excitations per bin.")
-        plt.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
+        plt.savefig(folder + 'resp_bellows_wf_binned_' + str(N_bins) + "x" +
+                    str(N_projections) + '.png', dpi=100)
         plt.show()
     resp_gated = (binner.bin_hot).T
     resp_gated = np.array(resp_gated, dtype=bool)
