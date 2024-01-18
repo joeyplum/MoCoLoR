@@ -4,6 +4,7 @@ import argparse
 import scipy
 import sigpy as sp
 import numpy as np
+import os
 import copy
 import matplotlib
 import matplotlib.pyplot as plt
@@ -31,6 +32,15 @@ if __name__ == "__main__":
     folder = args.fname
     show_plot = args.plot
     N_projections = args.nprojections
+
+    # Check whether a specified save data path exists
+    results_exist = os.path.exists(folder + "/results")
+
+    # Create a new directory because the results path does not exist
+    if not results_exist:
+        os.makedirs(folder + "/results")
+        print("A new directory inside: " + folder +
+              " called 'results' has been created.")
 
     # Load motion
     motion_load = np.array(np.load(folder + "motion.npy"))
@@ -70,12 +80,12 @@ if __name__ == "__main__":
         binner.plot_dynamic_bin(N_bins)
         plt.suptitle("Respiratory binning for N = " +
                      str(N_projections) + " excitations per bin.")
-        plt.savefig(folder + 'resp_bellows_wf_binned_' + str(N_bins) + "x" +
+        plt.savefig(folder + '/results/resp_bellows_wf_binned_' + str(N_bins) + "x" +
                     str(N_projections) + '.png', dpi=100)
         plt.show()
     resp_gated = (binner.bin_hot).T
     resp_gated = np.array(resp_gated, dtype=bool)
-    bin_title = "motion_binned_" + str(N_bins) + "x" + \
+    bin_title = "/results/motion_binned_" + str(N_bins) + "x" + \
         str(N_projections) + ".npy"
     np.save(folder + bin_title, resp_gated)
     print(np.sum(resp_gated, axis=1))

@@ -66,19 +66,21 @@ class HilbertBinning:
         vals, val_props = find_peaks(-1 * self.signal)
 
         # identify low peaks
-        low_peaks = (self.signal[peaks] < (0.2 * np.max(self.signal[peaks]))) & (self.signal[peaks] > (0.2 * np.min(self.signal[vals])))
-        low_vals  = (self.signal[vals] > (0.2 * np.min(self.signal[vals]))) & (self.signal[vals] < (0.2 * np.max(self.signal[peaks])))
+        low_peaks = (self.signal[peaks] < (0.2 * np.max(self.signal[peaks]))
+                     ) & (self.signal[peaks] > (0.2 * np.min(self.signal[vals])))
+        low_vals = (self.signal[vals] > (0.2 * np.min(self.signal[vals]))
+                    ) & (self.signal[vals] < (0.2 * np.max(self.signal[peaks])))
 
         if peaks.size > vals.size:
             peaks = peaks[:-1]
-        elif peaks.size<vals.size:
+        elif peaks.size < vals.size:
             vals = vals[:-1]
 
         # below is unideal, since 50% of the time the first peak will not be filtered, but should have minor impact
 
-        if low_peaks.size>low_vals.size:
+        if low_peaks.size > low_vals.size:
             low_peaks = low_peaks[:-1]
-        elif low_peaks.size<low_vals.size:
+        elif low_peaks.size < low_vals.size:
             low_vals = low_vals[:-1]
 
         # algorithm assumes val is first, might be a better way to do this other than "left" and "right"
@@ -263,7 +265,7 @@ class HilbertBinning:
         """
         color = np.linspace(1, 10, np.size(self.signal))
 
-        plt.figure()
+        plt.figure(figsize=(9, 9))
         plt.subplot(2, 1, 1)
         plt.scatter(np.linspace(0, self.signal.size,
                     self.signal.size), self.signal, c=color, s=0.5)
@@ -311,12 +313,12 @@ class HilbertBinning:
 
         cmap = LinearSegmentedColormap.from_list("Bin Colors", color)
 
-        fig, axs = plt.subplots(2, 2)
+        fig, axs = plt.subplots(2, 2, figsize=(9, 6))
         gs = axs[0, 1].get_gridspec()
         axs[0, 1].remove()
         axs[1, 1].remove()
         axbig = fig.add_subplot(gs[0:2, 1])
-        fig.tight_layout()
+        # fig.tight_layout()
 
         for i in range(self.n_bins+1):
             axs[0, 0].scatter(np.arange(self.signal.size)[
