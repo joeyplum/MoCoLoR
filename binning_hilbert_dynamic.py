@@ -74,7 +74,7 @@ if __name__ == "__main__":
         plt.show()
     resp_gated = (binner.bin_hot).T
     resp_gated = np.array(resp_gated, dtype=bool)
-    bin_title = "motion_binned" + str(N_bins) + "x" + \
+    bin_title = "motion_binned_" + str(N_bins) + "x" + \
         str(N_projections) + ".npy"
     np.save(folder + bin_title, resp_gated)
     print(np.sum(resp_gated, axis=1))
