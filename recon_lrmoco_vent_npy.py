@@ -129,6 +129,7 @@ if __name__ == '__main__':
     ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)),
                      (nCoil, nphase*npe, nfe))
     dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
+    dcf_jsense = dcf2  # Must use DCF for older SIGPY JSENSE as it solves a Cartesian problem :(
     dcf2 = np.ones_like(dcf2)  # TODO comment out
     coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
@@ -136,7 +137,7 @@ if __name__ == '__main__':
     # mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
     #     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
     # Modified by JWP 20230828
-    mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf2[..., :nf_e], device=sp.Device(
+    mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
         device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
     S = sp.linop.Multiply(tshape, mps)
 
@@ -235,7 +236,7 @@ if __name__ == '__main__':
             # grad = lambda x : 1/L*PFTSs.H*PFTSs*x + rho*Ms.H*Ms*x - b
             def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b
             GD_step = sp.alg.GradientMethod(
-                grad, qt, .1, accelerate=False, tol=5e-7)
+                grad, qt, .1, accelerate=False, tol=5e-7)  # default false
             for j in range(iner_iter):
                 tic = time.perf_counter()
                 # CG_step.update()

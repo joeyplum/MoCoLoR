@@ -17,8 +17,8 @@ def jsens_calib(ksp, coord, dcf, ishape, device=sp.Device(-1),
                              lamda=lamda,
                              device=device,
                              comm=sp.Communicator(),
-                             max_iter=10,
-                             max_inner_iter=10).run()
+                             max_iter=20,
+                             max_inner_iter=20).run()
     return mps
 
 
