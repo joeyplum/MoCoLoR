@@ -68,11 +68,15 @@ if __name__ == "__main__":
     binner.sort_dynamic_bin(N_bins, N_projections, stdev=4)
     if show_plot == 1:
         binner.plot_dynamic_bin(N_bins)
-        plt.suptitle("Respiratory Binning")
+        plt.suptitle("Respiratory binning for N = " +
+                     str(N_projections) + " excitations per bin.")
         plt.savefig(folder + 'resp_bellows_wf_binned.png', dpi=100)
         plt.show()
     resp_gated = (binner.bin_hot).T
     resp_gated = np.array(resp_gated, dtype=bool)
+    bin_title = "motion_binned" + str(N_bins) + "x" + \
+        str(N_projections) + ".npy"
+    np.save(folder + bin_title, resp_gated)
     print(np.sum(resp_gated, axis=1))
 
     # Exclude first bin
