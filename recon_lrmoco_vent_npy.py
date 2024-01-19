@@ -266,7 +266,7 @@ if __name__ == '__main__':
                 # iM_fields.append(iM_field)
             M_fields = np.asarray(M_fields)
             # iM_fields = np.asarray(iM_fields)
-            np.save(os.path.join(fname, '_M_mr.npy'), M_fields)
+            # np.save(os.path.join(fname, '_M_mr.npy'), M_fields) # JWP do not save
             # np.save(os.path.join(fname, '_iM_mr.npy'),iM_fields)
         else:
             M_fields = np.load(os.path.join(fname, '_M_mr.npy'))
@@ -295,9 +295,9 @@ if __name__ == '__main__':
         Ms = Diags(Ms, oshape=(nphase,)+tshape, ishape=(nphase,)+tshape)
         # M0s = Diags(M0s,oshape=(nphase,)+tshape,ishape=(nphase,)+tshape)
 
-        np.save(os.path.join(fname, 'mocolor_vent.npy'), qt)
-        np.save(os.path.join(fname, 'mocolor_vent_residual.npy'),
-                np.asarray(res_list))
+        # np.save(os.path.join(fname, 'mocolor_vent.npy'), qt)
+        # np.save(os.path.join(fname, 'mocolor_vent_residual.npy'),
+        #         np.asarray(res_list))
 
     # qt = np.load(os.path.join(fname, 'mocolor_vent.npy'))
     # nphase = 6
@@ -316,8 +316,8 @@ if __name__ == '__main__':
             print('ANTsJac computation completed for phase: ' + str(i))
         jacs = np.asarray(jacs)
         svs = np.asarray(svs)
-        np.save(os.path.join(fname, 'jac_mocolor_vent.npy'), jacs)
-        np.save(os.path.join(fname, 'sv_mocolor_vent.npy'), svs)
+        # np.save(os.path.join(fname, 'jac_mocolor_vent.npy'), jacs)
+        # np.save(os.path.join(fname, 'sv_mocolor_vent.npy'), svs)
         toc = time.perf_counter()
         print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
