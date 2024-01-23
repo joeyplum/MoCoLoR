@@ -5,6 +5,7 @@ import numpy as np
 import copy
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 plt.style.use("dark_background")
 matplotlib.use('TkAgg')
 
@@ -34,7 +35,7 @@ if __name__ == '__main__':
         0]*np.shape(motion_load)[1]))
 
     # Load manual binning file
-    resp_gated_load = np.array(np.load(folder + "motion_Filip.npy"), dtype=int)
+    resp_gated_load = np.array(np.load(folder + "motion_Filip.npy"), dtype=bool)
     N_bins = resp_gated_load.shape[0] - 1
 
     # Optional, normalize waveform
@@ -120,6 +121,24 @@ if __name__ == '__main__':
         dcf_subset = dcf[subset, ...]
         dcf_subset = dcf_subset[random_k, ...]
         dcf_save[gate_number, ...] = dcf_subset
+
+    if show_plot == 1:
+        hsv = matplotlib.colormaps['rainbow']
+        c = [[0.5, 0.5, 0.5]]
+        for i in range(N_bins+1):
+            c.append(hsv(i/(N_bins+1)))
+        cmap = LinearSegmentedColormap.from_list("Bin Colors", c)
+
+        plt.figure(figsize=(15,4))
+        num_pts = 7000
+        scatter = plt.scatter(np.arange(num_pts), waveform[:num_pts],
+                    c=np.argmax(np.array(resp_gated_load)[:, :num_pts], 0), cmap=cmap, s=1)
+        plt.xlabel('Excitation number (first ' + str(num_pts) + ' only)')
+        plt.ylabel('Respiratory bellows amplitude')
+        legend_labels = [f'Excluded' if i == 0 else f'Bin {i}' for i in range(N_bins+1)]
+        plt.legend(handles=scatter.legend_elements()[0], labels=legend_labels)
+        plt.savefig(folder + 'resp_bellows_binned_hannover.png', dpi=100)
+        plt.show()
 
     print("Saving data using with the following dimensions...")
     np.save(folder + "bksp.npy", ksp_save)
