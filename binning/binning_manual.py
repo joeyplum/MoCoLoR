@@ -33,26 +33,20 @@ if __name__ == '__main__':
     waveform = np.reshape(motion_load, (np.shape(motion_load)[
         0]*np.shape(motion_load)[1]))
 
-    # Load the manual binning file
-    include = scipy.io.loadmat(folder + "binning.mat")['bool'].astype(bool)
-    exclude = scipy.io.loadmat(folder + "binning.mat")['excludeInd'].astype(bool)[:,0]
-    N_bins = len(include)
-
-    # Exclude data points from the manual binning file
-    waveform = waveform[~exclude]
+    # Load manual binning file
+    resp_gated_load = np.array(np.load(folder + "motion_Filip.npy"), dtype=int)
+    N_bins = resp_gated_load.shape[0] - 1
 
     # Optional, normalize waveform
-
     def normalize_data(x):
         return (x - np.min(x)) / (np.max(x) - np.min(x))
-
     waveform_normalized = normalize_data(waveform)
 
     # Smooth motion waveform
-    sos = scipy.signal.iirfilter(4, Wn=[0.1, 2.5], fs=200, btype="bandpass",
+    sos = scipy.signal.iirfilter(1, Wn=[0.001, 1], fs=500, btype="bandpass",
                                  ftype="butter", output="sos")
     waveform_filt = scipy.signal.sosfilt(sos, waveform)
-    # waveform_filt = scipy.signal.medfilt(waveform,15) # median filter
+    # waveform_filt = scipy.signal.medfilt(waveform,3) # median filter
 
     # Visualize
     if show_plot == 1:
@@ -65,11 +59,13 @@ if __name__ == '__main__':
         fig.savefig(folder + 'resp_bellows_wf.png', dpi=100)
         plt.show()
 
-
     # Bin data
-    resp_gated = include
+    resp_gated = resp_gated_load
     print("Number of projections per respiratory bin:")
     print(np.sum(resp_gated, axis=1))
+
+    # Exclude first bin
+    resp_gated = (resp_gated[1:, :]).tolist()
 
     # Estimate "goodness of breathing"
     range_bins = np.ptp(np.sum(resp_gated, axis=1))
@@ -81,8 +77,11 @@ if __name__ == '__main__':
     print("(1 = awful)")
 
     # Subset value to have same number proj in each insp exp
-    k = np.min(np.sum(resp_gated, axis=1))
+    k = int(np.min(np.sum(resp_gated, axis=1)))
     print("Number of points per bin selected for use: " + str(k))
+
+    # k = np.max(np.sum(resp_gated, axis=1))
+    # print("WARNING: USING THE MAX of points per bin selected for use: " + str(k))
 
     # Load data
     ksp = np.load(folder + "ksp.npy")
@@ -95,26 +94,11 @@ if __name__ == '__main__':
     dcf = np.load(folder + "dcf.npy")
     dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
 
-    # Perform exlusions
-    ksp = ksp[:,~exclude, :]
-    coord = coord[~exclude, :, :]
-    dcf = dcf[~exclude, :]
-
-    # Look at k0 pts
-    if show_plot == 1:
-        fig = plt.figure(figsize=(15, 4), dpi=100)
-        plt.plot(sp.to_device(
-            abs(ksp[0, :3000, 0]), -1), color='y')
-        plt.xlabel('Excitation number')
-        plt.ylabel('k0 amplitude')
-        plt.title('k0 amplitude of 0th channel')
-        fig.savefig(folder + 'k0_amplitude.png', dpi=100)
-        plt.show()
-
     # Subset
     ksp_save = np.zeros(
         (N_bins, np.shape(ksp)[0], k, np.shape(ksp)[2]), dtype="complex")
     coord_save = np.zeros((N_bins, k, np.shape(coord)[1], np.shape(coord)[2]))
+    # coord_save += 5 # Add 5 to initial array so that all the "empty points" are dumped on far edges of k-space
     dcf_save = np.zeros((N_bins, k,  np.shape(dcf)[1]), dtype="complex")
 
     for gate_number in range(N_bins):
@@ -122,11 +106,14 @@ if __name__ == '__main__':
 
         # Select only a subset of trajectories and data
         ksp_subset = ksp[:, subset, :]
+        # Randomly select k valid excitations for each bin from all avaliable excitations
         seed_value = 111
         np.random.seed(seed_value)
         random_k = np.random.choice(ksp_subset.shape[1], k, replace=False)
+        # random_k = np.random.choice(ksp_subset.shape[1], k, replace=True)
+        # print("WARNING: np.random.choice(..., replace=True): REPLACING VALUES = TRUE.")
         ksp_subset = ksp_subset[:, random_k, :]
-        ksp_save[gate_number, :, :, :] = ksp_subset
+        ksp_save[gate_number, ...] = ksp_subset
         coord_subset = coord[subset, ...]
         coord_subset = coord_subset[random_k, ...]
         coord_save[gate_number, ...] = coord_subset
@@ -142,5 +129,3 @@ if __name__ == '__main__':
     np.save(folder + "bdcf.npy", dcf_save)
     print('bdcf: ' + str(np.shape(dcf_save)))
     print("...completed.")
-
-# %%

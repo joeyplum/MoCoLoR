@@ -4,23 +4,23 @@
 PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
-run_binning_quantile() {
-    $PYTHON_EXECUTABLE binning_hilbert_dynamic.py --fname data/floret-740H-032c/ --nbins 10 --plot 1 --nprojections 10000
-}
-
-# Function to run the recon_xdgrasp_npy.py script with given arguments
-run_recon_xdgrasp1() {
-    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py data/floret-740H-032c/ --lambda_TV 0.05 --vent_flag 1 --recon_res 117 --scan_res 220
-}
-
-# Function to run the recon_mocolor_npy.py script with given arguments
-run_recon_mocolor1() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py data/floret-740H-032c/ --lambda_lr 0.05 --vent_flag 1 --recon_res 117 --scan_res 220 --mr_cflag 1 --iner_iter 50 --res_scale 0.7
+run_binning_manual() {
+    $PYTHON_EXECUTABLE binning/binning_manual.py --fname data/floret-740H-032c/ --plot 0
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_nufft() {
-    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py data/floret-740H-032c/ --lambda_TV 0 --vent_flag 0 --recon_res 117 --scan_res 220
+    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py data/floret-740H-032c/ --lambda_TV 0 --vent_flag 1 --recon_res 117 --scan_res  220
+}
+
+# Function to run the recon_xdgrasp_npy.py script with given arguments
+run_recon_xdgrasp1() {
+    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py data/floret-740H-032c/ --lambda_TV 0.05 --vent_flag 1 --recon_res 117 --scan_res  220
+}
+
+# Function to run the recon_mocolor_npy.py script with given arguments
+run_recon_mocolor1() {
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py data/floret-740H-032c/ --lambda_lr 0.01 --vent_flag 1 --recon_res 117 --scan_res  220 --mr_cflag 1
 }
 
 # Generate a mask
@@ -28,9 +28,9 @@ run_segmentation() {
     $PYTHON_EXECUTABLE segmentation/segmentation_ute.py --fname data/floret-740H-032c/results/ --filename img_mocolor_10_bin_117_resolution.nii --plot 0 --mask 1
 }
 
-echo "Running binning_quantile.py ..."
-run_binning_quantile
-echo "Finished binning_quantile.py"
+echo "Running binning_manual.py ..."
+# run_binning_manual
+echo "Finished binning_manual.py"
 
 echo "Running recon_dcf_nufft_npy.py ..."
 # run_recon_nufft
@@ -50,9 +50,6 @@ echo "Finished segmentation_ute.py"
 
 
 # You need to make the shell script executable. Open your terminal and navigate to the directory containing the run_recons.sh file, then run the following command:
-# chmod +x run_recons.sh
+# chmod +x run_recons_manual_binning.sh
 # Followed by:
-# ./run_recons.sh
-
-
-
+# ./run_recons_manual_binning.sh
