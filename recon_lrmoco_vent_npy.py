@@ -25,6 +25,8 @@ import os
 import nibabel as nib
 import time
 
+import matplotlib.pyplot as plt
+
 # Usage
 # python recon_lrmoco_vent_npy.py data/floret-740H-053/ --lambda_lr 0.05 --vent_flag 1 --recon_res 220 --scan_res 220 --mr_cflag 1
 
@@ -33,6 +35,9 @@ if __name__ == '__main__':
     # IO parameters
     parser = argparse.ArgumentParser(
         description='motion compensated low rank constrained recon.')
+
+    parser.add_argument('--use_dcf', type=float, default=1,
+                        help='use DCF on objective function, yes == 1')
 
     parser.add_argument('--res_scale', type=float, default=1,
                         help='scale of resolution, full res == 1')
@@ -74,6 +79,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     #
+    use_dcf = args.use_dcf
     res_scale = args.res_scale
     scan_resolution = args.scan_res
     recon_resolution = args.recon_res
@@ -130,7 +136,12 @@ if __name__ == '__main__':
                      (nCoil, nphase*npe, nfe))
     dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
     dcf_jsense = dcf2  # Must use DCF for older SIGPY JSENSE as it solves a Cartesian problem :(
-    dcf2 = np.ones_like(dcf2)  # TODO comment out
+    if use_dcf == 0:
+        dcf2 = np.ones_like(dcf2)
+        dcf = np.ones_like(dcf)
+        print("DCF will not be used to precondition the objective function.")
+    else:
+        print("DCF is being used to precondition the objective function.")
     coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
     # Default
@@ -229,6 +240,12 @@ if __name__ == '__main__':
     b0 = 1/L*PFTSs.H*wdata
     res_list = []
 
+    # View convergence
+    count = 0
+    total_iter = sup_iter * outer_iter * iner_iter
+    img_convergence = np.zeros(
+        (total_iter, int(recon_resolution), int(recon_resolution)), dtype=float)
+
     for k in range(sup_iter):
         for i in range(outer_iter):
             b = b0 + rho*Ms.H*(z0 - u0)
@@ -249,6 +266,11 @@ if __name__ == '__main__':
                 if res_norm < 5e-8:
                     break
                 res_list.append(res_norm)
+
+                img_convergence[count, ...] = np.abs(
+                    np.squeeze(qt))[0, :, :, int(recon_resolution/2)]
+                count += 1
+
             z0 = np.complex64(LR(1, Ms*qt + u0))
             u0 = u0 + (Ms*qt - z0)
 
@@ -300,26 +322,6 @@ if __name__ == '__main__':
         #         np.asarray(res_list))
 
     # qt = np.load(os.path.join(fname, 'mocolor_vent.npy'))
-    # nphase = 6
-    # jacobian determinant & specific ventilation
-    if vent_flag == 1:
-        tic = time.perf_counter()
-        print('Jacobian Determinant and Specific Ventilation...')
-        jacs = []
-        svs = []
-        qt = np.abs(np.squeeze(qt))
-        qt = qt/np.max(qt)
-        for i in range(nphase):
-            jac, sv = reg.ANTsJac(np.abs(qt[n_ref]), np.abs(qt[i]))
-            jacs.append(jac)
-            svs.append(sv)
-            print('ANTsJac computation completed for phase: ' + str(i))
-        jacs = np.asarray(jacs)
-        svs = np.asarray(svs)
-        # np.save(os.path.join(fname, 'jac_mocolor_vent.npy'), jacs)
-        # np.save(os.path.join(fname, 'sv_mocolor_vent.npy'), svs)
-        toc = time.perf_counter()
-        print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(fname + "/results")
@@ -368,11 +370,36 @@ if __name__ == '__main__':
     # Multiply matrices together
     aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
 
+    ni_img = nib.Nifti1Image(
+        abs(np.moveaxis(img_convergence, 0, -1)), affine=aff)
+    nib.save(ni_img, fname + '/results/img_convergence_' + str(nphase) +
+             '_bin_' + str(int(recon_resolution)) + '_resolution')
+
     ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
     nib.save(ni_img, fname + '/results/img_mocolor_' + str(nphase) +
              '_bin_' + str(int(recon_resolution)) + '_resolution')
 
+    # nphase = 6
+    # jacobian determinant & specific ventilation
     if vent_flag == 1:
+        tic = time.perf_counter()
+        print('Jacobian Determinant and Specific Ventilation...')
+        jacs = []
+        svs = []
+        qt = np.abs(np.squeeze(qt))
+        qt = qt/np.max(qt)
+        for i in range(nphase):
+            jac, sv = reg.ANTsJac(np.abs(qt[n_ref]), np.abs(qt[i]))
+            jacs.append(jac)
+            svs.append(sv)
+            print('ANTsJac computation completed for phase: ' + str(i))
+        jacs = np.asarray(jacs)
+        svs = np.asarray(svs)
+        # np.save(os.path.join(fname, 'jac_mocolor_vent.npy'), jacs)
+        # np.save(os.path.join(fname, 'sv_mocolor_vent.npy'), svs)
+        toc = time.perf_counter()
+        print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
+
         ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
         nib.save(ni_img, fname + '/results/sv_mocolor_' +
                  str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
