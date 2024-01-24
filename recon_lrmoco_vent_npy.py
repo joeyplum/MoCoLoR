@@ -140,8 +140,15 @@ if __name__ == '__main__':
         dcf2 = np.ones_like(dcf2)
         dcf = np.ones_like(dcf)
         print("DCF will not be used to precondition the objective function.")
+    elif use_dcf == 1:
+        print("The provided DCF is being used to precondition the objective function.")
     else:
-        print("DCF is being used to precondition the objective function.")
+        print("A new DCF will be calculated to use on the objective function. This is not being used for JSENSE.")
+        dcf = np.zeros_like(dcf)
+        for i in range(nphase):
+            dcf[i, ...] = mr.dcf(traj[i, ...], device=sp.Device(
+                device))**0.5  # OLD VERSION DOES NOT ESTIMATE BASED ON IMAGE SHAPE
+
     coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
     # Default
