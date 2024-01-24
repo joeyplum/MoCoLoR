@@ -245,7 +245,7 @@ if __name__ == '__main__':
     count = 0
     total_iter = sup_iter * outer_iter * iner_iter
     img_convergence = np.zeros(
-        (total_iter, int(recon_resolution), int(recon_resolution)), dtype=float)
+        (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
 
     for k in range(sup_iter):
         for i in range(outer_iter):
@@ -269,7 +269,7 @@ if __name__ == '__main__':
                 res_list.append(res_norm)
 
                 img_convergence[count, ...] = np.abs(
-                    np.squeeze(qt))[0, :, :, int(recon_resolution/2)]  # First resp phase only, middle slice
+                    np.squeeze(qt))[0, :, :, :]  # First resp phase only
                 count += 1
 
             z0 = np.complex64(LR(1, Ms*qt + u0))
