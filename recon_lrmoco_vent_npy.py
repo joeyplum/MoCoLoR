@@ -101,7 +101,12 @@ if __name__ == '__main__':
     # data loading
     data = np.load(os.path.join(fname, 'bksp.npy'))
     traj = np.real(np.load(os.path.join(fname, 'bcoord.npy')))
-    dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
+    try:
+        dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf_pipemenon.npy')))
+        print("Pipe-Menon DCF used.")
+    except:
+        dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
+        print("Philips DCF used.")
 
     nf_scale = res_scale
     nf_arr = np.sqrt(np.sum(traj[0, 0, :, :]**2, axis=1))
@@ -140,6 +145,19 @@ if __name__ == '__main__':
         dcf2 = np.ones_like(dcf2)
         dcf = np.ones_like(dcf)
         print("DCF will not be used to precondition the objective function.")
+    elif use_dcf == 2:
+        # TODO: auto dcf failing for older Sigpy
+        dcf = np.zeros_like(dcf)
+        print(
+            "A DCF will be calculated based on the coordinate trajectories and image shape. Must use newer SigPy until bug fixed. ")
+        for i in range(nphase):
+            dcf[i, ...] = sp.to_device(ext.pipe_menon_dcf(
+                traj[i, ...], img_shape=tshape), -1)
+        dcf /= np.max(dcf)
+        np.save(fname + "bdcf_pipemenon.npy", dcf)
+        exit()  # stop the code here as old Sigpy (for MOCOLOR) and new Sigpy (for DCF) are not compatible
+        dcf = dcf**0.5
+
     else:
         print("The provided DCF is being used to precondition the objective function.")
 
@@ -237,7 +255,7 @@ if __name__ == '__main__':
     z0 = np.zeros_like(qt)
 
     rho = 1
-    # ATA = lambda x : 1/L*PFTSs.H*PFTSs*x + Ms.H*Ms*x
+    # def ATA(x): return 1/L*PFTSs.H*PFTSs*x + Ms.H*Ms*x
     b0 = 1/L*PFTSs.H*wdata
     res_list = []
 
@@ -250,7 +268,8 @@ if __name__ == '__main__':
     for k in range(sup_iter):
         for i in range(outer_iter):
             b = b0 + rho*Ms.H*(z0 - u0)
-            # CG_step = sp.alg.ConjugateGradient(ATA, b, qt, max_iter=iner_iter,tol=1e-7)
+            # CG_step = sp.alg.ConjugateGradient(
+            #     ATA, b, qt, max_iter=iner_iter, tol=1e-7)
             # grad = lambda x : 1/L*PFTSs.H*PFTSs*x + rho*Ms.H*Ms*x - b
             def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b
             GD_step = sp.alg.GradientMethod(
@@ -260,6 +279,7 @@ if __name__ == '__main__':
                 # CG_step.update()
                 GD_step.update()
                 # qt = qt - 0.2*(1/L*PFTSs.H*(PFTSs*qt - wdata) + Ms.H*(Ms*qt - z0 + u0))
+                # res_norm = CG_step.resid/np.linalg.norm(qt)*CG_step.alpha
                 res_norm = GD_step.resid/np.linalg.norm(qt)*GD_step.alpha
                 toc = time.perf_counter()
                 print('superior iter:{}, outer iter:{}, inner iter:{}, res:{}, {}sec'.format(
