@@ -102,11 +102,11 @@ if __name__ == '__main__':
     data = np.load(os.path.join(fname, 'bksp.npy'))
     traj = np.real(np.load(os.path.join(fname, 'bcoord.npy')))
     try:
-        dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf_pipemenon.npy')))
-        print("Pipe-Menon DCF used.")
-    except:
         dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
         print("Philips DCF used.")
+    except:
+        dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf_pipemenon.npy')))
+        print("Pipe-Menon DCF used.")
 
     nf_scale = res_scale
     nf_arr = np.sqrt(np.sum(traj[0, 0, :, :]**2, axis=1))
@@ -146,10 +146,9 @@ if __name__ == '__main__':
         dcf = np.ones_like(dcf)
         print("DCF will not be used to precondition the objective function.")
     elif use_dcf == 2:
-        # TODO: auto dcf failing for older Sigpy
         dcf = np.zeros_like(dcf)
         print(
-            "A DCF will be calculated based on the coordinate trajectories and image shape. Must use newer SigPy until bug fixed. ")
+            "A new DCF will be calculated based on the coordinate trajectories and image shape. ")
         for i in range(nphase):
             dcf[i, ...] = sp.to_device(ext.pipe_menon_dcf(
                 traj[i, ...], device=sp.Device(0), img_shape=tshape), -1)
