@@ -140,14 +140,8 @@ if __name__ == '__main__':
         dcf2 = np.ones_like(dcf2)
         dcf = np.ones_like(dcf)
         print("DCF will not be used to precondition the objective function.")
-    elif use_dcf == 1:
-        print("The provided DCF is being used to precondition the objective function.")
     else:
-        print("A new DCF will be calculated to use on the objective function. This is not being used for JSENSE.")
-        dcf = np.zeros_like(dcf)
-        for i in range(nphase):
-            dcf[i, ...] = mr.dcf(traj[i, ...], device=sp.Device(
-                device))**0.5  # OLD VERSION DOES NOT ESTIMATE BASED ON IMAGE SHAPE
+        print("The provided DCF is being used to precondition the objective function.")
 
     coord = np.reshape(traj, (nphase*npe, nfe, 3))
 
@@ -275,7 +269,7 @@ if __name__ == '__main__':
                 res_list.append(res_norm)
 
                 img_convergence[count, ...] = np.abs(
-                    np.squeeze(qt))[0, :, :, int(recon_resolution/2)]
+                    np.squeeze(qt))[0, :, :, int(recon_resolution/2)]  # First resp phase only, middle slice
                 count += 1
 
             z0 = np.complex64(LR(1, Ms*qt + u0))
