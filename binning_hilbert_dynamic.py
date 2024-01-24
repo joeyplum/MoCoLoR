@@ -82,7 +82,6 @@ if __name__ == "__main__":
                      str(N_projections) + " excitations per bin.")
         plt.savefig(folder + '/results/resp_bellows_wf_binned_' + str(N_bins) + "x" +
                     str(N_projections) + '.png', dpi=100)
-        plt.xlim((0, 7000))
         plt.show()
     resp_gated = (binner.bin_hot).T
     resp_gated = np.array(resp_gated, dtype=bool)

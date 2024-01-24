@@ -152,10 +152,9 @@ if __name__ == '__main__':
             "A DCF will be calculated based on the coordinate trajectories and image shape. Must use newer SigPy until bug fixed. ")
         for i in range(nphase):
             dcf[i, ...] = sp.to_device(ext.pipe_menon_dcf(
-                traj[i, ...], img_shape=tshape), -1)
+                traj[i, ...], device=sp.Device(0), img_shape=tshape), -1)
         dcf /= np.max(dcf)
         np.save(fname + "bdcf_pipemenon.npy", dcf)
-        exit()  # stop the code here as old Sigpy (for MOCOLOR) and new Sigpy (for DCF) are not compatible
         dcf = dcf**0.5
 
     else:

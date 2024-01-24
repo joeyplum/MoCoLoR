@@ -2,6 +2,7 @@ import argparse
 import scipy
 import sigpy as sp
 import numpy as np
+import os
 import copy
 import matplotlib
 import matplotlib.pyplot as plt
@@ -23,6 +24,15 @@ if __name__ == '__main__':
 
     folder = args.fname
     show_plot = args.plot
+
+    # Check whether a specified save data path exists
+    results_exist = os.path.exists(folder + "/results")
+
+    # Create a new directory because the results path does not exist
+    if not results_exist:
+        os.makedirs(folder + "/results")
+        print("A new directory inside: " + folder +
+              " called 'results' has been created.")
 
     # %% Generate binned data
 
@@ -130,14 +140,14 @@ if __name__ == '__main__':
         cmap = LinearSegmentedColormap.from_list("Bin Colors", c)
 
         plt.figure(figsize=(15,4))
-        num_pts = 7000
+        num_pts = 20000
         scatter = plt.scatter(np.arange(num_pts), waveform[:num_pts],
                     c=np.argmax(np.array(resp_gated_load)[:, :num_pts], 0), cmap=cmap, s=1)
         plt.xlabel('Excitation number (first ' + str(num_pts) + ' only)')
         plt.ylabel('Respiratory bellows amplitude')
         legend_labels = [f'Excluded' if i == 0 else f'Bin {i}' for i in range(N_bins+1)]
         plt.legend(handles=scatter.legend_elements()[0], labels=legend_labels)
-        plt.savefig(folder + 'resp_bellows_binned_hannover.png', dpi=100)
+        plt.savefig(folder + 'results/resp_bellows_binned_hannover.png', dpi=100)
         plt.show()
 
     print("Saving data using with the following dimensions...")

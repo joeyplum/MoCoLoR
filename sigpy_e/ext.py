@@ -64,16 +64,8 @@ def TVt_prox(X, lamda, iter_max=10):
     return X_b
 
 
-def pipe_menon_dcf(
-    coord,
-    img_shape=None,
-    device=sp.Device(0),
-    max_iter=30,
-    n=128,
-    beta=8,
-    width=4,
-    show_pbar=True,
-):
+def pipe_menon_dcf(coord, img_shape=None, device=sp.cpu_device, max_iter=30,
+                   n=128, beta=8, width=4, show_pbar=True):
     r"""Compute Pipe Menon density compensation factor.
 
     Perform the following iteration:
@@ -86,7 +78,6 @@ def pipe_menon_dcf(
 
     Args:
         coord (array): k-space coordinates.
-        img_shape (None or list): Image shape.
         device (Device): computing device.
         max_iter (int): number of iterations.
         n (int): Kaiser-Bessel sampling numbers for gridding operator.
@@ -113,18 +104,20 @@ def pipe_menon_dcf(
         if img_shape is None:
             img_shape = sp.estimate_shape(coord)
 
-        G = sp.linop.Gridding(
-            img_shape, coord, param=beta, width=width, kernel="kaiser_bessel"
-        )
-        with tqdm(
-            total=max_iter, desc="PipeMenonDCF", disable=not show_pbar
-        ) as pbar:
+        # Get kernel
+        x = xp.arange(n, dtype=coord.dtype) / n
+        kernel = xp.i0(beta * (1 - x**2)**0.5).astype(coord.dtype)
+        kernel /= kernel.max()
+
+        G = sp.linop.Gridding(img_shape, coord, width, kernel)
+        with tqdm(total=max_iter, desc="PipeMenonDCF",
+                  disable=not show_pbar) as pbar:
             for it in range(max_iter):
                 GHGw = G.H * G * w
                 w /= xp.abs(GHGw)
                 resid = xp.abs(GHGw - 1).max().item()
 
-                pbar.set_postfix(resid="{0:.2E}".format(resid))
+                pbar.set_postfix(resid='{0:.2E}'.format(resid))
                 pbar.update()
 
     return w
