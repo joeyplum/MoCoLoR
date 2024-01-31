@@ -5,29 +5,29 @@ PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
 run_binning_quantile() {
-    $PYTHON_EXECUTABLE binning_hilbert_dynamic.py --fname /storage/Joey/MoCoLoR/data/floret-186H-398v4/ --nbins 10 --plot 1 --nprojections 10000
+    $PYTHON_EXECUTABLE binning_hilbert_dynamic.py --fname /storage/Joey/MoCoLoR/data/floret-186H-402/ --nbins 10 --plot 1 --nprojections 10000
 }
 
-# TODO: 314v3, 403, 398v4, 402
+# TODO: 314v3, 403, 402(ovid), 406v4(pretty)
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_xdgrasp1() {
-    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-186H-398v4/ --lambda_TV 0.05 --vent_flag 1 --recon_res 117 --scan_res 220
+    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-186H-402/ --lambda_TV 0.05 --vent_flag 1 --recon_res 117 --scan_res 220
 }
 
 # Function to run the recon_mocolor_npy.py script with given arguments
 run_recon_mocolor1() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-186H-398v4/ --use_dcf 2 --lambda_lr 0.01 --vent_flag 1 --recon_res 117 --scan_res 220 --mr_cflag 1 --iner_iter 5 --res_scale 0.7
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-186H-402/ --use_dcf 2 --lambda_lr 0.025 --recon_res 117 --scan_res 220 --mr_cflag 1 --res_scale 0.75 
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_nufft() {
-    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py /storage/Joey/MoCoLoR/data/floret-186H-398v4/ --lambda_TV 0 --vent_flag 0 --recon_res 117 --scan_res 220
+    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py /storage/Joey/MoCoLoR/data/floret-186H-402/ --lambda_TV 0 --vent_flag 0 --recon_res 117 --scan_res 220
 }
 
 # Generate a mask
 run_segmentation() {
-    $PYTHON_EXECUTABLE segmentation/segmentation_ute.py --fname /storage/Joey/MoCoLoR/data/floret-186H-398v4/results/ --filename img_mocolor_10_bin_117_resolution.nii --plot 0 --mask 1
+    $PYTHON_EXECUTABLE segmentation/segmentation_ute.py --fname /storage/Joey/MoCoLoR/data/floret-186H-402/results/ --filename img_mocolor_10_bin_117_resolution.nii --plot 0 --mask 1
 }
 
 echo "Running binning_quantile.py ..."

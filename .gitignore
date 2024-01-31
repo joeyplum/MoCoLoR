@@ -21,3 +21,15 @@ segmentation/UTE_FLORET_LungSeg.py
 experimental/UTE_FLORET_LungSeg.py
 segmentation/segmentation_ute.py
 CCHMC access only - non-PHI identifiers.xlsx
+
+# Readphilips
+readphilips/__init__.py
+readphilips/file_io.py
+readphilips/getRadialParams.py
+readphilips/getSpiralParams.py
+readphilips/readMira.py
+readphilips/readPhilips.cp36-win_amd64.pyd
+readphilips/readPhilips.cp37-win_amd64.pyd
+readphilips/readPhilips.cp38-win_amd64.pyd
+readphilips/ReadPhilips.py
+readphilips/readPhilipsExports.py

@@ -27,6 +27,14 @@ import time
 
 import matplotlib.pyplot as plt
 
+try:
+    import readphilips as rp
+    from readphilips.file_io import io
+    automate_FOV = True
+except:
+    print("Could not load ReadPhilips script.")
+    automate_FOV = False
+
 # Usage
 # python recon_lrmoco_vent_npy.py data/floret-740H-053/ --lambda_lr 0.05 --vent_flag 1 --recon_res 220 --scan_res 220 --mr_cflag 1
 
@@ -38,13 +46,15 @@ if __name__ == '__main__':
 
     parser.add_argument('--use_dcf', type=float, default=1,
                         help='use DCF on objective function, yes == 1')
+    parser.add_argument('--gamma', type=float, default=0,
+                        help='T2* weighting in Fourier encoding operator. Default == 0, full weighting == 1.')
 
     parser.add_argument('--res_scale', type=float, default=1,
                         help='scale of resolution, full res == 1')
     parser.add_argument('--scan_res', type=float, default=200,
                         help='scan matrix size')
     parser.add_argument('--recon_res', type=float, default=200,
-                        help='econ matrix size')
+                        help='recon matrix size')
 
     parser.add_argument('--fov_x', type=float, default=1,
                         help='scale of FOV x, full res == 1')
@@ -80,6 +90,7 @@ if __name__ == '__main__':
 
     #
     use_dcf = args.use_dcf
+    gamma = args.gamma
     res_scale = args.res_scale
     scan_resolution = args.scan_res
     recon_resolution = args.recon_res
@@ -97,6 +108,42 @@ if __name__ == '__main__':
 
     print('Reconstruction started...')
     tic_total = time.perf_counter()
+
+    def find_sin_files(directory):
+        sin_files = []
+
+        # Walk through the directory and its subdirectories
+        for foldername, subfolders, filenames in os.walk(fname):
+            for filename in filenames:
+                # Check if the file has a .sin extension
+                
+                if filename.endswith(".sin"):
+                    # Get the full path of the file and add it to the list
+                    sin_files.append(os.path.join(fname, filename))
+                    
+                    for sin_file in sin_files:
+                        print("*.sin file located: ")
+                        print(sin_file)
+        return sin_files                        
+
+    rls_file = find_sin_files(fname)[0]
+
+    if automate_FOV:
+        try:
+            rls = rp.PhilipsData(rls_file)
+            rls.readParamOnly = True
+            rls.raw_corr = False
+            rls.compute()
+            scan_resolution = int(rls.header.get(
+            'sin').get('scan_resolutions')[0][0])
+            print("Automated scan_resolution = " + str(scan_resolution))
+        except:
+            print("raw-lab-sin reading failed. User-defined scan resolution used instead.")
+
+
+    # OPTIONAL: override res_scale
+    res_scale = (recon_resolution/scan_resolution)+0.05
+    print("WARNING: res_scale has been overridden. res_scale == " + str(res_scale))
 
     # data loading
     data = np.load(os.path.join(fname, 'bksp.npy'))
@@ -214,7 +261,7 @@ if __name__ == '__main__':
     for i in range(nphase):
         FTs = NFTs((nCoil,)+tshape, traj[i, ...], device=sp.Device(device))
         W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
-        K = sp.linop.Multiply(W.oshape, k)
+        K = sp.linop.Multiply(W.oshape, k**gamma)
 
         FTSs = W*K*FTs*S
         PFTSs.append(FTSs)
