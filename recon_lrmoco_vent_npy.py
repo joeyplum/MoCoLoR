@@ -169,6 +169,15 @@ if __name__ == '__main__':
         device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
     S = sp.linop.Multiply(tshape, mps)
 
+    # Estimate T2* decay
+    t2_star = 1.2  # ms
+    readout = 1.2*res_scale  # ms
+    dwell_time = readout/nfe
+    relaxation = np.zeros((nfe,))
+    for i in range(nfe):
+        relaxation[i] = np.exp(-(i*dwell_time)/t2_star)
+    k = np.reshape(relaxation, [1, 1, nfe])
+
     # registration
     print('Motion Field Initialization...')
     # M_fields = []
@@ -205,7 +214,9 @@ if __name__ == '__main__':
     for i in range(nphase):
         FTs = NFTs((nCoil,)+tshape, traj[i, ...], device=sp.Device(device))
         W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
-        FTSs = W*FTs*S
+        K = sp.linop.Multiply(W.oshape, k)
+
+        FTSs = W*K*FTs*S
         PFTSs.append(FTSs)
     PFTSs = Diags(PFTSs, oshape=(nphase, nCoil, npe, nfe,),
                   ishape=(nphase,)+tshape)
@@ -260,8 +271,8 @@ if __name__ == '__main__':
     # View convergence
     count = 0
     total_iter = sup_iter * outer_iter * iner_iter
-    img_convergence = np.zeros(
-        (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
+    # img_convergence = np.zeros(
+    #     (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
 
     for k in range(sup_iter):
         for i in range(outer_iter):
@@ -286,8 +297,8 @@ if __name__ == '__main__':
                     break
                 res_list.append(res_norm)
 
-                img_convergence[count, ...] = np.abs(
-                    np.squeeze(qt))[0, :, :, :]  # First resp phase only
+                # img_convergence[count, ...] = np.abs(
+                #     np.squeeze(qt))[0, :, :, :]  # First resp phase only
                 count += 1
 
             z0 = np.complex64(LR(1, Ms*qt + u0))
@@ -389,10 +400,10 @@ if __name__ == '__main__':
     # Multiply matrices together
     aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
 
-    ni_img = nib.Nifti1Image(
-        abs(np.moveaxis(img_convergence, 0, -1)), affine=aff)
-    nib.save(ni_img, fname + '/results/img_convergence_' + str(nphase) +
-             '_bin_' + str(int(recon_resolution)) + '_resolution')
+    # ni_img = nib.Nifti1Image(
+    #     abs(np.moveaxis(img_convergence, 0, -1)), affine=aff)
+    # nib.save(ni_img, fname + '/results/img_convergence_' + str(nphase) +
+    #          '_bin_' + str(int(recon_resolution)) + '_resolution')
 
     ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
     nib.save(ni_img, fname + '/results/img_mocolor_' + str(nphase) +
