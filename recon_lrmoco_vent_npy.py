@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 try:
     import readphilips as rp
     from readphilips.file_io import io
+    import csv
     automate_FOV = True
 except:
     print("Could not load ReadPhilips script.")
@@ -137,6 +138,38 @@ if __name__ == '__main__':
             scan_resolution = int(rls.header.get(
             'sin').get('scan_resolutions')[0][0])
             print("Automated scan_resolution = " + str(scan_resolution))
+            slice_thickness = float(rls.header.get('sin').get('slice_thickness')[0][0])
+            field_of_view = slice_thickness * scan_resolution
+            TR = float(rls.header.get('sin').get('repetition_times')[0][0]) 
+            TE = float(rls.header.get('sin').get('echo_times')[0][0]) 
+            flip_angle_applied = float(rls.header.get('sin').get('flip_angles')[0][0]) 
+
+            try:
+                print("Exporting important parameters...")
+
+                important_data = {"aqcuisition_matrix": scan_resolution,
+                                  "acquisition_voxel_size_mm": slice_thickness,
+                                  "field_of_view_mm": field_of_view,
+                                  "recon_matrix": recon_resolution,
+                                  "recon_voxel_size_mm": field_of_view/recon_resolution,
+                                  "repetition_time_ms": TR,
+                                  "echo_time_ms": TE,
+                                  "flip_angle_deg": flip_angle_applied}
+                csv_filename = fname + "results/imaging_parameters.csv"
+                with open(csv_filename, mode='w', newline='') as file:
+                    writer = csv.writer(file)
+    
+                    # Write the header
+                    writer.writerow(["Parameter", "Value"])
+
+                    # Write the data
+                    for key, value in important_data.items():
+                        writer.writerow([key, value])   
+
+                print("Important parameters exported successfully.")
+            except:
+                print("Could not export important parameters from *.sin file.")
+
         except:
             print("raw-lab-sin reading failed. User-defined scan resolution used instead.")
 
