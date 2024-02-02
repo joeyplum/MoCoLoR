@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     # Load manual binning file
     # resp_gated_load = np.array(np.load(folder + "motion_Filip.npy"), dtype=bool)
-    resp_gated_load = np.array(np.load(folder + "motion_Filip_Viewsharing.npy"), dtype=bool)
+    resp_gated_load = np.array(np.load(folder + "motion_Filip_Viewsharing_AllIncluded.npy"), dtype=bool)
     N_bins = resp_gated_load.shape[0] - 1
 
     # Optional, normalize waveform

@@ -137,12 +137,18 @@ if __name__ == '__main__':
             rls.compute()
             scan_resolution = int(rls.header.get(
             'sin').get('scan_resolutions')[0][0])
+            scan_resolution = 300 # Force
             print("Automated scan_resolution = " + str(scan_resolution))
             slice_thickness = float(rls.header.get('sin').get('slice_thickness')[0][0])
-            field_of_view = slice_thickness * scan_resolution
+            field_of_view = int(slice_thickness * scan_resolution)
             TR = float(rls.header.get('sin').get('repetition_times')[0][0]) 
             TE = float(rls.header.get('sin').get('echo_times')[0][0]) 
             flip_angle_applied = float(rls.header.get('sin').get('flip_angles')[0][0]) 
+
+            print("WARNING: forcefully overwriting recon_resolution:")
+            recon_voxel_size = 3 # mm
+            recon_resolution = field_of_view / recon_voxel_size
+            print("recon_resolution set to: " + str(recon_voxel_size))
 
             try:
                 print("Exporting important parameters...")
@@ -169,7 +175,8 @@ if __name__ == '__main__':
                 print("Important parameters exported successfully.")
             except:
                 print("Could not export important parameters from *.sin file.")
-
+            del(rls)
+            print("Raw-Lab-Sin cleared from memory.")
         except:
             print("raw-lab-sin reading failed. User-defined scan resolution used instead.")
 
@@ -198,11 +205,11 @@ if __name__ == '__main__':
     traj[..., 2] = traj[..., 2]*scale[2]
 
     # Optional: undersample along freq encoding - JWP 20230815
+    print("Number of frequency encodes befoire trimming: " + str(nf_e))
     traj = traj[..., :nf_e, :]
     data = data[..., :nf_e]
     dcf = dcf[..., :nf_e]
-    print("Number of frequency encodes after trimming: " + str(nf_e))
-
+    
     nphase, nCoil, npe, nfe = data.shape
     tshape = (int(np.max(traj[..., 0])-np.min(traj[..., 0])), int(np.max(
         traj[..., 1])-np.min(traj[..., 1])), int(np.max(traj[..., 2])-np.min(traj[..., 2])))
@@ -213,7 +220,7 @@ if __name__ == '__main__':
     print('Number of phases used in this reconstruction: ' + str(nphase))
     print('Number of coils: ' + str(nCoil))
     print('Number of phase encodes: ' + str(npe))
-    print('Number of frequency encodes: ' + str(nfe))
+    print('Number of frequency encodes (after trimming): ' + str(nfe))
 
     # calibration
     print('Calibration...')
@@ -335,6 +342,7 @@ if __name__ == '__main__':
     tmp = np.fft.ifftshift(tmp)
     # TODO condition number calc
     wdata = data*dcf[:, np.newaxis, :, :]
+    del(dcf) # clear from memory to help speed up
 
     # ADMM
     print('Recon...')
@@ -485,9 +493,13 @@ if __name__ == '__main__':
     # nib.save(ni_img, fname + '/results/img_convergence_' + str(nphase) +
     #          '_bin_' + str(int(recon_resolution)) + '_resolution')
 
+    try: 
+        nifti_filename = str(nphase) + '_bin_' + str(field_of_view) + 'mm_FOV_' + str(int(recon_voxel_size)) + 'mm_recon_resolution'
+    except:
+        nifti_filename = str(nphase) + '_bin_' + str(int(recon_resolution)) + '_recon_matrix_size'
+
     ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
-    nib.save(ni_img, fname + '/results/img_mocolor_' + str(nphase) +
-             '_bin_' + str(int(recon_resolution)) + '_resolution')
+    nib.save(ni_img, fname + '/results/img_mocolor_' + nifti_filename)
 
     # nphase = 6
     # jacobian determinant & specific ventilation
@@ -511,12 +523,10 @@ if __name__ == '__main__':
         print('time elapsed for ventilation metrics: {}sec'.format(int(toc - tic)))
 
         ni_img = nib.Nifti1Image(np.moveaxis(svs, 0, -1), affine=aff)
-        nib.save(ni_img, fname + '/results/sv_mocolor_' +
-                 str(nphase) + '_bin_' + str(int(recon_resolution)) + '_resolution')
+        nib.save(ni_img, fname + '/results/sv_mocolor_' + nifti_filename)
 
         ni_img = nib.Nifti1Image(np.moveaxis(jacs, 0, -1), affine=aff)
-        nib.save(ni_img, fname + '/results/jacs_mocolor_' + str(nphase) +
-                 '_bin_' + str(int(recon_resolution)) + '_resolution')
+        nib.save(ni_img, fname + '/results/jacs_mocolor_' + nifti_filename)
 
     toc_total = time.perf_counter()
     print('total time elapsed: {}mins'.format(int(toc_total - tic_total)/60))

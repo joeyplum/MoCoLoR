@@ -26,12 +26,19 @@ if __name__ == "__main__":
                         help='show plots of waveforms, 1=True or 0=False.')
     parser.add_argument('--nprojections', type=int, default=10000,
                         help='number of projections to include in each bin.')
+    parser.add_argument('--exc_start', type=int, default=None,
+                        help='enter index of first excitation (if you want to subset). Default == None.')
+    parser.add_argument('--exc_end', type=int, default=None,
+                        help='enter index of final excitation (if you want to subset). Default == None.')
+    
     args = parser.parse_args()
 
     N_bins = args.nbins
     folder = args.fname
     show_plot = args.plot
     N_projections = args.nprojections
+    start_excitation = args.exc_start
+    end_excitation = args.exc_end
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(folder + "/results")
@@ -49,6 +56,21 @@ if __name__ == "__main__":
         print('Unexpected motion data dimensions.')
     waveform = np.reshape(motion_load, (np.shape(motion_load)[
         0]*np.shape(motion_load)[1]))
+    
+    if start_excitation is not None:
+        start_excitation = start_excitation
+    else:
+        start_excitation = 0
+
+    if end_excitation is not None:
+        end_excitation = end_excitation
+    else:
+        end_excitation = np.shape(motion_load)[0]*np.shape(motion_load)[1]
+
+    excitation_range = np.arange(start_excitation, end_excitation)
+    
+    # Subset
+    waveform = waveform[excitation_range]
 
     # Optional, normalize waveform
     def normalize_data(x):
@@ -112,13 +134,13 @@ if __name__ == "__main__":
     # Load data
     ksp = np.load(folder + "ksp.npy")
     ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[
-        1]*np.shape(ksp)[2], np.shape(ksp)[3]))
+        1]*np.shape(ksp)[2], np.shape(ksp)[3]))[:,excitation_range,:]
     print(np.shape(ksp))
     coord = np.load(folder + "coord.npy")
     coord = coord.reshape(
-        (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))
+        (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[excitation_range,...]
     dcf = np.load(folder + "dcf.npy")
-    dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))
+    dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))[excitation_range,...]
 
 
 # Subset

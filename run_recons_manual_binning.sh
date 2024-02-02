@@ -5,27 +5,27 @@ PYTHON_EXECUTABLE=python
 
 # Function to run the binning_quantile.py script with given arguments
 run_binning_manual() {
-    $PYTHON_EXECUTABLE binning/binning_manual.py --fname /storage/Joey/MoCoLoR/data/floret-ch-001/ --plot 1
+    $PYTHON_EXECUTABLE binning/binning_manual.py --fname /storage/Joey/MoCoLoR/data/floret-803H-023/ --plot 1
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_nufft() {
-    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py /storage/Joey/MoCoLoR/data/floret-ch-001/ --lambda_TV 0 --vent_flag 0 --recon_res 117 --scan_res  250 --res_scale 0.7
+    $PYTHON_EXECUTABLE recon_dcf_nufft_npy.py /storage/Joey/MoCoLoR/data/floret-803H-023/ --lambda_TV 0 --vent_flag 0 --recon_res 117 --scan_res  250 --res_scale 0.7
 }
 
 # Function to run the recon_xdgrasp_npy.py script with given arguments
 run_recon_xdgrasp1() {
-    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-ch-001/ --lambda_TV 0.05 --vent_flag 0 --recon_res 117 --scan_res  250
+    $PYTHON_EXECUTABLE recon_xdgrasp_npy.py /storage/Joey/MoCoLoR/data/floret-803H-023/ --lambda_TV 0.05 --vent_flag 0 --recon_res 117 --scan_res  250
 }
 
 # Function to run the recon_mocolor_npy.py script with given arguments
 run_recon_mocolor1() {
-    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-ch-001/ --use_dcf 2 --lambda_lr 0.025 --recon_res 117 --scan_res  220 --mr_cflag 1  
+    $PYTHON_EXECUTABLE recon_lrmoco_vent_npy.py /storage/Joey/MoCoLoR/data/floret-803H-023/ --use_dcf 2 --lambda_lr 0.025 --recon_res 117 --scan_res  220 --mr_cflag 1  
 }
 
 # Generate a mask
 run_segmentation() {
-    $PYTHON_EXECUTABLE segmentation/segmentation_ute.py --fname /storage/Joey/MoCoLoR/data/floret-ch-001/results/ --filename img_mocolor_13_bin_117_resolution.nii --plot 0 --mask 1
+    $PYTHON_EXECUTABLE segmentation/segmentation_ute.py --fname /storage/Joey/MoCoLoR/data/floret-803H-023/results/ --filename img_mocolor_15_bin_480mm_FOV_3mm_recon_resolution.nii --plot 0 --mask 1
 }
 
 echo "Running binning_manual.py ..."
