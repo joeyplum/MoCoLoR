@@ -61,6 +61,22 @@ class HilbertBinning:
         stdev = np.diag(params_cov)
         self.amp_err = stdev[0]
 
+    def breathing_rate(self, TR=3.71655E-3): # Default TR estimated from average of lots of subjects
+        peaks, peak_props = find_peaks(self.signal)
+        vals, val_props = find_peaks(-1 * self.signal)
+
+        print("TR: " + str(TR) + " seconds.")
+        print("Total peaks: " + str(peaks.shape[0]))
+        print("Total troughs: " + str(vals.shape[0]))
+        print("Total breaths: " + str(((peaks.shape[0]) + (vals.shape[0]))/2))
+        N_proj = self.signal.shape[0]
+        total_scan_duration = TR * N_proj
+        print("Total scan duration: " + str(total_scan_duration/60) + " minutes.")
+        average_breath_time = total_scan_duration/(((peaks.shape[0]) + (vals.shape[0]))/2)
+        print("Average breath duration: " + str(average_breath_time) + " seconds.")
+
+        return average_breath_time
+
     def filter_peaks(self):
         peaks, peak_props = find_peaks(self.signal)
         vals, val_props = find_peaks(-1 * self.signal)

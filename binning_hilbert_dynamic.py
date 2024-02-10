@@ -6,10 +6,20 @@ import sigpy as sp
 import numpy as np
 import os
 import copy
+import csv
 import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use("dark_background")
 matplotlib.use('TkAgg')
+
+try:
+    import readphilips as rp
+    from readphilips.file_io import io
+    import csv
+    automate_FOV = True
+except:
+    print("Could not load ReadPhilips script.")
+    automate_FOV = False
 
 if __name__ == "__main__":
 
@@ -95,8 +105,51 @@ if __name__ == "__main__":
         fig.savefig(folder + 'resp_bellows_wf.png', dpi=100)
         plt.show()
 
+    def find_sin_files(directory):
+        sin_files = []
+
+        # Walk through the directory and its subdirectories
+        for foldername, subfolders, filenames in os.walk(folder):
+            for filename in filenames:
+                # Check if the file has a .sin extension
+                
+                if filename.endswith(".sin"):
+                    # Get the full path of the file and add it to the list
+                    sin_files.append(os.path.join(folder, filename))
+                    
+                    for sin_file in sin_files:
+                        print("*.sin file located: ")
+                        print(sin_file)
+        return sin_files                        
+
+    rls_file = find_sin_files(folder)[0]
+    rls = rp.PhilipsData(rls_file)
+    rls.readParamOnly = True
+    rls.raw_corr = False
+    rls.compute()
+    TR = 1e-3 * float(rls.header.get('sin').get('repetition_times')[0][0]) 
+
     # Start binning
     binner = hb(waveform_filt)
+
+    # Work out breathing parameters
+    avg_breath_length = binner.breathing_rate(TR=TR)
+    segment_length = avg_breath_length / N_bins
+    midpoints = []
+    for i in range(N_bins):
+        # Calculate the midpoint of the segment
+        midpoint = i * segment_length + segment_length / 2
+        midpoints.append(midpoint)
+    
+    csv_filename = folder + "results/binning_times.csv"
+    with open(csv_filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(['avg_breath_length_seconds', avg_breath_length])
+        writer.writerow(['respiratory_bin', 'mid_time_seconds'])
+        for i, midpoint in enumerate(midpoints):
+            writer.writerow([i, midpoint])
+    
+
     binner.sort_dynamic_bin(N_bins, N_projections, stdev=4)
     if show_plot == 1:
         binner.plot_dynamic_bin(N_bins)

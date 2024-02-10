@@ -37,47 +37,62 @@ if __name__ == "__main__":
     tic_total = time.perf_counter()
 
     # Prediction
-    def AutoSeg_UTE(Image):
+    def AutoSeg_UTE(Image):# Require 3D input
         ndim = np.ndim(Image)
         Im_shape = Image.shape
         predicted_mask = np.zeros_like((Image))
-        if ndim == 3:
-            for i in range(Image.shape[-1]):
-                img_input = Image[:, :, i]
-                img_input = resize(img_input, (256, 256),
-                                   mode='constant', preserve_range=True)
-                img_input = (img_input - np.min(img_input)) / \
-                    (np.max(img_input) - np.min(img_input))
-                img_input = np.expand_dims(img_input, 0)
-                img_input = np.expand_dims(img_input, -1)
-                prediction = (model.predict(img_input))
-                predicted_img = np.argmax(prediction, axis=3)[0, :, :]
-                predicted_img = resize(
-                    predicted_img, (Im_shape[0], Im_shape[1]), mode='constant', preserve_range=True)
-                predicted_img = np.round(predicted_img).astype(int)
-                predicted_mask[:, :, i] = predicted_img
-        elif ndim == 4:
-            for i in range(Image.shape[2]):  # slice
-                for j in range(Image.shape[3]):  # bin
-                    img_input = Image[:, :, i, j]
-                    img_input = resize(img_input, (256, 256),
-                                       mode='constant', preserve_range=True)
-                    img_input = (img_input - np.min(img_input)) / \
-                        (np.max(img_input) - np.min(img_input))
-                    img_input = np.expand_dims(img_input, 0)
-                    img_input = np.expand_dims(img_input, -1)
-                    prediction = (model.predict(img_input))
-                    predicted_img = np.argmax(prediction, axis=3)[0, :, :]
-                    predicted_img = resize(
-                        predicted_img, (Im_shape[0], Im_shape[1]), mode='constant', preserve_range=True)
-                    predicted_img = np.round(predicted_img).astype(int)
-                    predicted_mask[:, :, i, j] = predicted_img
+        seg_vec = np.zeros(Image.shape[-1])
+        for i in range(Image.shape[-1]):
+            img_input = Image[:,:,i]
+            img_input = resize(img_input, (256,256), mode='constant', preserve_range=True)
+            img_input = (img_input - np.min(img_input)) / (np.max(img_input) - np.min(img_input))  
+            img_input = np.expand_dims(img_input, 0)
+            img_input = np.expand_dims(img_input, -1)
+            prediction = (model.predict(img_input))
+            predicted_img = np.argmax(prediction, axis=3)[0,:,:]
+            predicted_img = resize(predicted_img, (Im_shape[0],Im_shape[1]), mode='constant', preserve_range=True)
+            predicted_img = np.round(predicted_img).astype(int)
+            predicted_mask[:,:,i] = predicted_img
+            # Check if the slice has values 2 or 3
+            if np.any((predicted_img == 2) | (predicted_img == 3)):
+                seg_vec[i] = 1
+                        
+        # Find the indices of ones in the vector
+        one_indices = [i for i, val in enumerate(seg_vec) if val == 1]
+
+        # Find the consecutive sequences of ones
+        consecutive_sequences = []
+        current_sequence = []
+
+        for i in one_indices:
+            if current_sequence and i != current_sequence[-1] + 1:
+                consecutive_sequences.append(current_sequence)
+                current_sequence = []
+            current_sequence.append(i)
+
+        # Check the last sequence
+        if current_sequence:
+            consecutive_sequences.append(current_sequence)
+
+        # Filter and keep only the long sequences
+        min_sequence_length = 40  # Adjust this threshold as needed
+        filtered_sequences = [sequence for sequence in consecutive_sequences if len(sequence) >= min_sequence_length]
+
+        # Create a new vector with zeros and ones based on the filtered sequences
+        result_vector = [1 if i in sequence else 0 for i in range(len(seg_vec)) for sequence in filtered_sequences]
+        for i in range(Image.shape[-1]):
+            if result_vector[i] == 0:
+                # Check if the slice has values 2 or 3
+                if np.any((predicted_mask[:, :, i] == 2) | (predicted_mask[:, :, i] == 3)):
+                    # Set all pixels with values 2 or 3 to 0
+                    predicted_mask[:, :, i][np.isin(predicted_mask[:, :, i], [2, 3])] = 0
+        
     
         return predicted_mask
 
     # Load
     image_file = folder+file
-    img_test = nib.load(image_file).get_fdata()
+    img_test = nib.load(image_file).get_fdata()                                                                                                                                                       
     img_test = np.rot90(img_test)
     img_test = np.flip(img_test, 0)
 

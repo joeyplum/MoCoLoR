@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     # Load manual binning file
     # resp_gated_load = np.array(np.load(folder + "motion_Filip.npy"), dtype=bool)
-    resp_gated_load = np.array(np.load(folder + "motion_Filip_Viewsharing_AllIncluded.npy"), dtype=bool)
+    resp_gated_load = np.array(np.load(folder + "motion_Filip_Viewsharing_HardSmooth_AllIndices_17bins.npy"), dtype=bool)
     N_bins = resp_gated_load.shape[0] - 1
 
     # Optional, normalize waveform
@@ -140,8 +140,8 @@ if __name__ == '__main__':
             c.append(hsv(i/(N_bins+1)))
         cmap = LinearSegmentedColormap.from_list("Bin Colors", c)
 
-        plt.figure(figsize=(15,4))
-        num_pts = 20000
+        plt.figure(figsize=(12,6))
+        num_pts = 40000
         scatter = plt.scatter(np.arange(num_pts), waveform[:num_pts],
                     c=np.argmax(np.array(resp_gated_load)[:, :num_pts], 0), cmap=cmap, s=1)
         plt.xlabel('Excitation number (first ' + str(num_pts) + ' only)')

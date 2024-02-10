@@ -135,12 +135,13 @@ if __name__ == '__main__':
             rls.readParamOnly = True
             rls.raw_corr = False
             rls.compute()
-            scan_resolution = int(rls.header.get(
-            'sin').get('scan_resolutions')[0][0])
+            # scan_resolution = int(rls.header.get(
+            # 'sin').get('scan_resolutions')[0][0])
             scan_resolution = 300 # Force
             print("Automated scan_resolution = " + str(scan_resolution))
             slice_thickness = float(rls.header.get('sin').get('slice_thickness')[0][0])
-            field_of_view = int(slice_thickness * scan_resolution)
+            # field_of_view = int(slice_thickness * scan_resolution)
+            field_of_view = 480 # force
             TR = float(rls.header.get('sin').get('repetition_times')[0][0]) 
             TE = float(rls.header.get('sin').get('echo_times')[0][0]) 
             flip_angle_applied = float(rls.header.get('sin').get('flip_angles')[0][0]) 
@@ -205,7 +206,7 @@ if __name__ == '__main__':
     traj[..., 2] = traj[..., 2]*scale[2]
 
     # Optional: undersample along freq encoding - JWP 20230815
-    print("Number of frequency encodes befoire trimming: " + str(nf_e))
+    print("Number of frequency encodes before trimming: " + str(data.shape[-1]))
     traj = traj[..., :nf_e, :]
     data = data[..., :nf_e]
     dcf = dcf[..., :nf_e]
@@ -254,6 +255,7 @@ if __name__ == '__main__':
     # Modified by JWP 20230828
     mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
         device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+    del(dcf_jsense, dcf2)
     S = sp.linop.Multiply(tshape, mps)
 
     # Estimate T2* decay
@@ -342,7 +344,7 @@ if __name__ == '__main__':
     tmp = np.fft.ifftshift(tmp)
     # TODO condition number calc
     wdata = data*dcf[:, np.newaxis, :, :]
-    del(dcf) # clear from memory to help speed up
+    del(dcf, data, tmp, traj) # clear from memory to help speed up
 
     # ADMM
     print('Recon...')
@@ -355,6 +357,8 @@ if __name__ == '__main__':
     # def ATA(x): return 1/L*PFTSs.H*PFTSs*x + Ms.H*Ms*x
     b0 = 1/L*PFTSs.H*wdata
     res_list = []
+
+    del(K, S, W)
 
     # View convergence
     count = 0
