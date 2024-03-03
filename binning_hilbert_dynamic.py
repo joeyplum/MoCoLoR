@@ -88,7 +88,7 @@ if __name__ == "__main__":
     waveform_normalized = normalize_data(waveform)
 
     # Smooth motion waveform
-    sos = scipy.signal.iirfilter(1, Wn=[0.001, 1], fs=500, btype="bandpass",
+    sos = scipy.signal.iirfilter(1, Wn=[0.001, 1], fs=500/5, btype="bandpass",
                                  ftype="butter", output="sos")
     waveform_filt = scipy.signal.sosfilt(sos, waveform)
     # waveform_filt = scipy.signal.medfilt(waveform,3) # median filter
@@ -150,7 +150,7 @@ if __name__ == "__main__":
             writer.writerow([i, midpoint])
     
 
-    binner.sort_dynamic_bin(N_bins, N_projections, stdev=4)
+    binner.sort_dynamic_bin(N_bins, N_projections, stdev=2) # stdev=0.5-4 ish
     if show_plot == 1:
         binner.plot_dynamic_bin(N_bins)
         plt.suptitle("Respiratory binning for N = " +

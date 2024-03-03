@@ -9,8 +9,8 @@ matplotlib.use('TkAgg')
 single_frame = False
 
 # Create a 3D matrix of images (height, width, num_frames)
-filename = 'jacs_mocolor_30_bin_220_resolution.nii'
-foldername = '/storage/Joey/MoCoLoR/data/floret-740H-059/results/'
+filename = 'img_mocolor_32_bin_480mm_FOV_3mm_recon_resolution.nii'
+foldername = '/storage/Joey/MoCoLoR/data/floret-ch-001v2/results/'
 image_matrix = nib.load(foldername + filename)
 
 image_matrix = np.array(image_matrix.get_fdata())
@@ -18,6 +18,9 @@ image_matrix = np.squeeze(image_matrix)
 
 # Optional: omit first frame (if looking at specific/jacs vent image)
 image_matrix = image_matrix[..., 1:]
+slice_min = 20
+slice_max = image_matrix.shape[0] - slice_min
+image_matrix = image_matrix[slice_min:slice_max, slice_min:slice_max, slice_min:slice_max, ...]
 
 # Optional: only include the middle X% of slices
 image_matrix = image_matrix[:, int(

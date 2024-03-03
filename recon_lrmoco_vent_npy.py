@@ -127,7 +127,10 @@ if __name__ == '__main__':
                         print(sin_file)
         return sin_files                        
 
-    rls_file = find_sin_files(fname)[0]
+    try:
+        rls_file = find_sin_files(fname)[0]
+    except:
+        print("Could not locate *.sin file.")
 
     if automate_FOV:
         try:
@@ -257,6 +260,7 @@ if __name__ == '__main__':
         device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
     del(dcf_jsense, dcf2)
     S = sp.linop.Multiply(tshape, mps)
+    # S = sp.linop.Multiply(tshape, np.ones((1,)+tshape)) # ONES
 
     # Estimate T2* decay
     t2_star = 1.2  # ms
