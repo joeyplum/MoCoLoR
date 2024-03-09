@@ -239,8 +239,10 @@ if __name__ == '__main__':
         (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[:, :nf_e, :]
         dcf_jsense = np.load(fname + "dcf.npy")
         dcf_jsense = dcf_jsense.reshape((np.shape(dcf_jsense)[0] * np.shape(dcf_jsense)[1], np.shape(dcf_jsense)[2]))[..., :nfe]
-        mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
-            device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+        # mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
+        #     device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+        mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
+            device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
         del(dcf_jsense, ksp, coord)
         S = sp.linop.Multiply(tshape, mps)
         print("Success.")
@@ -531,9 +533,9 @@ if __name__ == '__main__':
 
     # Save images as Nifti files
     # Build an array using matrix multiplication
-    scaling_affine = np.array([[1, 0, 0, 0],
-                               [0, 1, 0, 0],
-                               [0, 0, 1, 0],
+    scaling_affine = np.array([[-1, 0, 0, 0],
+                               [0, -1, 0, 0],
+                               [0, 0, -1, 0],
                                [0, 0, 0, 1]])
 
     # Rotate gamma radians about axis i
@@ -543,8 +545,8 @@ if __name__ == '__main__':
                                   [0, cos_gamma, -sin_gamma,  0],
                                   [0, sin_gamma, cos_gamma, 0],
                                   [0, 0, 0, 1]])
-    cos_gamma = np.cos(np.pi)
-    sin_gamma = np.sin(np.pi)
+    cos_gamma = np.cos(0)
+    sin_gamma = np.sin(0)
     rotation_affine_2 = np.array([[cos_gamma, 0, sin_gamma, 0],
                                   [0, 1, 0, 0],
                                   [-sin_gamma, 0, cos_gamma, 0],
