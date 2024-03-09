@@ -32,3 +32,7 @@ readphilips/readPhilips.cp37-win_amd64.pyd
 readphilips/readPhilips.cp38-win_amd64.pyd
 readphilips/ReadPhilips.py
 readphilips/readPhilipsExports.py
+
+# tmp files
+*.nii.gz
+*.mat

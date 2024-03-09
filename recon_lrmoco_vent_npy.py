@@ -188,7 +188,8 @@ if __name__ == '__main__':
     # OPTIONAL: override res_scale
     res_scale = (recon_resolution/scan_resolution)+0.05
     print("WARNING: res_scale has been overridden. res_scale == " + str(res_scale))
-
+        
+        
     # data loading
     data = np.load(os.path.join(fname, 'bksp.npy'))
     traj = np.real(np.load(os.path.join(fname, 'bcoord.npy')))
@@ -226,12 +227,47 @@ if __name__ == '__main__':
     print('Number of phase encodes: ' + str(npe))
     print('Number of frequency encodes (after trimming): ' + str(nfe))
 
-    # calibration
-    print('Calibration...')
-    ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)),
-                     (nCoil, nphase*npe, nfe))
-    dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
-    dcf_jsense = dcf2  # Must use DCF for older SIGPY JSENSE as it solves a Cartesian problem :(
+    # data loading for sens map
+    try:
+        print("Calculating sensitivity map from raw (unbinned) data...")
+        ksp = np.load(fname + "ksp.npy")
+        ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[
+        1]*np.shape(ksp)[2], np.shape(ksp)[3]))[..., :nf_e]
+        print(np.shape(ksp))
+        coord = np.load(fname + "coord.npy")*scale[0]
+        coord = coord.reshape(
+        (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[:, :nf_e, :]
+        dcf_jsense = np.load(fname + "dcf.npy")
+        dcf_jsense = dcf_jsense.reshape((np.shape(dcf_jsense)[0] * np.shape(dcf_jsense)[1], np.shape(dcf_jsense)[2]))[..., :nfe]
+        mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
+            device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+        del(dcf_jsense, ksp, coord)
+        S = sp.linop.Multiply(tshape, mps)
+        print("Success.")
+    except:
+        # calibration
+        print('Calculating sensitivity map from binned data...')
+        ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)),
+                        (nCoil, nphase*npe, nfe))
+        dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
+        dcf_jsense = dcf2  # Must use DCF for older SIGPY JSENSE as it solves a Cartesian problem :(
+        
+        # Default
+        # mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
+        #     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
+        # Modified by JWP 20230828
+        coord = np.reshape(traj, (nphase*npe, nfe, 3))
+        mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
+            device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+        # TODO: see if you get improved results without dcf (may not be possible on old sigpy)
+        # mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
+        #     device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
+        del(dcf_jsense, dcf2, coord, ksp)
+        S = sp.linop.Multiply(tshape, mps)
+        # S = sp.linop.Multiply(tshape, np.ones((1,)+tshape)) # ONES
+
+
+    print('Density compensation...')
     if use_dcf == 0:
         dcf2 = np.ones_like(dcf2)
         dcf = np.ones_like(dcf)
@@ -246,30 +282,38 @@ if __name__ == '__main__':
         dcf /= np.max(dcf)
         np.save(fname + "bdcf_pipemenon.npy", dcf)
         dcf = dcf**0.5
-
+    elif use_dcf == 3:
+        # TODO: kspace conditioner - make robust for proton (not done yet)
+        dcf = np.zeros_like(dcf)
+        print("Attempting k-space preconditoner calculation, as per Ong, et. al.,...")
+        for i in range(nphase):
+            # Approximate using a single channel precond for now (helps for speed)
+            ones = np.ones_like(mps)
+            ones /= len(mps)**0.5
+            p = sp.to_device(mr.kspace_precond(
+                ones,
+                coord=sp.to_device(traj[i, ...], device),
+                device=sp.Device(device), lamda=1e-3), -1)
+            dcf[i, ...] = p[0, ...] # Use only first channel for preconditioner, all will be same in this case
+            del (p)
+        dcf = dcf**0.5
+    elif use_dcf == 4:
+        dcf = np.zeros_like(data) 
+        print("Attempting k-space preconditoner calculation, as per Ong, et. al.,...")
+        for i in range(nphase):
+            # mps_tmp = mr.app.JsenseRecon_UPDATED(y=data[i, ..., :nf_e], coord=traj[i, :, :nf_e, :],device=sp.Device(
+            #                                     device), img_shape=tshape, 
+            #                                      mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
+            p = sp.to_device(mr.kspace_precond(
+                mps,
+                coord=sp.to_device(traj[i, ...], device),
+                device=sp.Device(device), lamda=1e-3), -1)
+            dcf[i, ...] = p # Use all channels here
+            del (p)
+        dcf = dcf**0.5
     else:
         print("The provided DCF is being used to precondition the objective function.")
 
-    coord = np.reshape(traj, (nphase*npe, nfe, 3))
-
-    # Default
-    # mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
-    #     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
-    # Modified by JWP 20230828
-    mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
-        device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
-    del(dcf_jsense, dcf2)
-    S = sp.linop.Multiply(tshape, mps)
-    # S = sp.linop.Multiply(tshape, np.ones((1,)+tshape)) # ONES
-
-    # Estimate T2* decay
-    t2_star = 1.2  # ms
-    readout = 1.2*res_scale  # ms
-    dwell_time = readout/nfe
-    relaxation = np.zeros((nfe,))
-    for i in range(nfe):
-        relaxation[i] = np.exp(-(i*dwell_time)/t2_star)
-    k = np.reshape(relaxation, [1, 1, nfe])
 
     # registration
     print('Motion Field Initialization...')
@@ -306,10 +350,27 @@ if __name__ == '__main__':
     PFTSs = []
     for i in range(nphase):
         FTs = NFTs((nCoil,)+tshape, traj[i, ...], device=sp.Device(device))
-        W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
-        K = sp.linop.Multiply(W.oshape, k**gamma)
-
-        FTSs = W*K*FTs*S
+        if use_dcf == 4:
+            W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :, :])
+        else:
+            # TODO test hypothesis that it is faster to have multiply.Linops with reduced point dimensions
+            W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
+        
+        if gamma == 0:
+            FTSs = W*FTs*S
+        else:
+            # Estimate T2* decay
+            t2_star = 1.2  # ms
+            readout = 1.2*res_scale  # ms
+            dwell_time = readout/nfe
+            relaxation = np.zeros((nfe,))
+            for i in range(nfe):
+                relaxation[i] = np.exp(-(i*dwell_time)/t2_star)
+            k = np.reshape(relaxation, [1, 1, nfe])
+            
+            K = sp.linop.Multiply(W.oshape, k**gamma)
+            FTSs = W*K*FTs*S
+            del(K)
         PFTSs.append(FTSs)
     PFTSs = Diags(PFTSs, oshape=(nphase, nCoil, npe, nfe,),
                   ishape=(nphase,)+tshape)
@@ -340,6 +401,12 @@ if __name__ == '__main__':
     print('Preconditioner calculation...')
     tmp = FTSs.H*FTSs*np.complex64(np.ones(tshape))
     L = np.mean(np.abs(tmp))
+    print("Preconditioner: L, using MoCoLoR: " + str(L))
+    L = sp.app.MaxEig(FTSs.H*FTSs, dtype=np.complex64,
+                      device=sp.Device(-1)).run() * 1.01
+    # data /= np.linalg.norm(data)
+    print("Preconditioner: L, using MaxEig: " + str(L))
+    
     # TODO condition number calc
     tmp = np.zeros(tshape)
     tmp[0, 0, 0] = 1.0
@@ -347,7 +414,11 @@ if __name__ == '__main__':
     tmp = FTSs.H*FTSs*np.complex64(tmp)
     tmp = np.fft.ifftshift(tmp)
     # TODO condition number calc
-    wdata = data*dcf[:, np.newaxis, :, :]
+    if use_dcf == 4:
+        wdata = data*dcf
+    else:
+        # TODO: make dcf 4D in all scenarios for robustness
+        wdata = data*dcf[:, np.newaxis, :, :]
     del(dcf, data, tmp, traj) # clear from memory to help speed up
 
     # ADMM
@@ -362,7 +433,7 @@ if __name__ == '__main__':
     b0 = 1/L*PFTSs.H*wdata
     res_list = []
 
-    del(K, S, W)
+    del(S, W, FTs)
 
     # View convergence
     count = 0
