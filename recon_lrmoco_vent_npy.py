@@ -242,7 +242,8 @@ if __name__ == '__main__':
         # mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
         #     device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
         mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
-            device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
+            device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4, 
+                                         max_inner_iter=20, max_iter=20).run()
         del(dcf_jsense, ksp, coord)
         S = sp.linop.Multiply(tshape, mps)
         print("Success.")
@@ -347,6 +348,17 @@ if __name__ == '__main__':
 
     M_fields = np.zeros((nphase,) + tshape + (len(tshape),))
 
+    if gamma != 0:
+        # Estimate T2* decay
+        t2_star = 1.2  # ms
+        readout = 1.2*res_scale  # ms
+        dwell_time = readout/nfe
+        relaxation = np.zeros((nfe,))
+        for i in range(nfe):
+            relaxation[i] = np.exp(-(i*dwell_time)/t2_star)
+        k = np.reshape(relaxation, [1, 1, nfe])
+        dcf *= k**gamma
+    
     # low rank
     print('Low rank prep...')
     PFTSs = []
@@ -358,21 +370,8 @@ if __name__ == '__main__':
             # TODO test hypothesis that it is faster to have multiply.Linops with reduced point dimensions
             W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
         
-        if gamma == 0:
-            FTSs = W*FTs*S
-        else:
-            # Estimate T2* decay
-            t2_star = 1.2  # ms
-            readout = 1.2*res_scale  # ms
-            dwell_time = readout/nfe
-            relaxation = np.zeros((nfe,))
-            for i in range(nfe):
-                relaxation[i] = np.exp(-(i*dwell_time)/t2_star)
-            k = np.reshape(relaxation, [1, 1, nfe])
-            
-            K = sp.linop.Multiply(W.oshape, k**gamma)
-            FTSs = W*K*FTs*S
-            del(K)
+        FTSs = W*FTs*S
+        
         PFTSs.append(FTSs)
     PFTSs = Diags(PFTSs, oshape=(nphase, nCoil, npe, nfe,),
                   ishape=(nphase,)+tshape)
