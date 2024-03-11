@@ -226,6 +226,53 @@ if __name__ == '__main__':
     print('Number of coils: ' + str(nCoil))
     print('Number of phase encodes: ' + str(npe))
     print('Number of frequency encodes (after trimming): ' + str(nfe))
+    
+    # Check whether a specified save data path exists
+    results_exist = os.path.exists(fname + "/results")
+
+    # Create a new directory because the results path does not exist
+    if not results_exist:
+        os.makedirs(fname + "/results")
+        print("A new directory inside: " + fname +
+              " called 'results' has been created.")
+
+    # Save images as Nifti files
+    # Build an array using matrix multiplication
+    scaling_affine = np.array([[-1, 0, 0, 0],
+                               [0, -1, 0, 0],
+                               [0, 0, -1, 0],
+                               [0, 0, 0, 1]])
+
+    # Rotate gamma radians about axis i
+    cos_gamma = np.cos(0)
+    sin_gamma = np.sin(0)
+    rotation_affine_1 = np.array([[1, 0, 0, 0],
+                                  [0, cos_gamma, -sin_gamma,  0],
+                                  [0, sin_gamma, cos_gamma, 0],
+                                  [0, 0, 0, 1]])
+    cos_gamma = np.cos(0)
+    sin_gamma = np.sin(0)
+    rotation_affine_2 = np.array([[cos_gamma, 0, sin_gamma, 0],
+                                  [0, 1, 0, 0],
+                                  [-sin_gamma, 0, cos_gamma, 0],
+                                  [0, 0, 0, 1]])
+    cos_gamma = np.cos(0)
+    sin_gamma = np.sin(0)
+    rotation_affine_3 = np.array([[cos_gamma, -sin_gamma, 0, 0],
+                                  [sin_gamma, cos_gamma, 0, 0],
+                                  [0, 0, 1, 0],
+                                  [0, 0, 0, 1]])
+    rotation_affine = rotation_affine_1.dot(
+        rotation_affine_2.dot(rotation_affine_3))
+
+    # Apply translation
+    translation_affine = np.array([[1, 0, 0, 0],
+                                   [0, 1, 0, 0],
+                                   [0, 0, 1, 0],
+                                   [0, 0, 0, 1]])
+
+    # Multiply matrices together
+    aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
 
     # data loading for sens map
     try:
@@ -468,6 +515,10 @@ if __name__ == '__main__':
                 # img_convergence[count, ...] = np.abs(
                 #     np.squeeze(qt))[0, :, :, :]  # First resp phase only
                 count += 1
+                
+                # Save tmp version of recon to view while running
+                ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
+                nib.save(ni_img, fname + '/results/tmp_img_mocolor')
 
             z0 = np.complex64(LR(1, Ms*qt + u0))
             u0 = u0 + (Ms*qt - z0)
@@ -520,53 +571,6 @@ if __name__ == '__main__':
         #         np.asarray(res_list))
 
     # qt = np.load(os.path.join(fname, 'mocolor_vent.npy'))
-
-    # Check whether a specified save data path exists
-    results_exist = os.path.exists(fname + "/results")
-
-    # Create a new directory because the results path does not exist
-    if not results_exist:
-        os.makedirs(fname + "/results")
-        print("A new directory inside: " + fname +
-              " called 'results' has been created.")
-
-    # Save images as Nifti files
-    # Build an array using matrix multiplication
-    scaling_affine = np.array([[-1, 0, 0, 0],
-                               [0, -1, 0, 0],
-                               [0, 0, -1, 0],
-                               [0, 0, 0, 1]])
-
-    # Rotate gamma radians about axis i
-    cos_gamma = np.cos(0)
-    sin_gamma = np.sin(0)
-    rotation_affine_1 = np.array([[1, 0, 0, 0],
-                                  [0, cos_gamma, -sin_gamma,  0],
-                                  [0, sin_gamma, cos_gamma, 0],
-                                  [0, 0, 0, 1]])
-    cos_gamma = np.cos(0)
-    sin_gamma = np.sin(0)
-    rotation_affine_2 = np.array([[cos_gamma, 0, sin_gamma, 0],
-                                  [0, 1, 0, 0],
-                                  [-sin_gamma, 0, cos_gamma, 0],
-                                  [0, 0, 0, 1]])
-    cos_gamma = np.cos(0)
-    sin_gamma = np.sin(0)
-    rotation_affine_3 = np.array([[cos_gamma, -sin_gamma, 0, 0],
-                                  [sin_gamma, cos_gamma, 0, 0],
-                                  [0, 0, 1, 0],
-                                  [0, 0, 0, 1]])
-    rotation_affine = rotation_affine_1.dot(
-        rotation_affine_2.dot(rotation_affine_3))
-
-    # Apply translation
-    translation_affine = np.array([[1, 0, 0, 0],
-                                   [0, 1, 0, 0],
-                                   [0, 0, 1, 0],
-                                   [0, 0, 0, 1]])
-
-    # Multiply matrices together
-    aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
 
     # ni_img = nib.Nifti1Image(
     #     abs(np.moveaxis(img_convergence, 0, -1)), affine=aff)
