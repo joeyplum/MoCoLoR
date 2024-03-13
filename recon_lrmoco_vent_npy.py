@@ -47,6 +47,8 @@ if __name__ == '__main__':
 
     parser.add_argument('--use_dcf', type=float, default=1,
                         help='use DCF on objective function, yes == 1')
+    parser.add_argument('--jsense', type=float, default=1,
+                        help='jsense algorithm choice, default == 1, updated == 2')
     parser.add_argument('--gamma', type=float, default=0,
                         help='T2* weighting in Fourier encoding operator. Default == 0, full weighting == 1.')
 
@@ -92,6 +94,7 @@ if __name__ == '__main__':
     #
     use_dcf = args.use_dcf
     gamma = args.gamma
+    jsense = args.jsense
     res_scale = args.res_scale
     scan_resolution = args.scan_res
     recon_resolution = args.recon_res
@@ -280,23 +283,36 @@ if __name__ == '__main__':
         ksp = np.load(fname + "ksp.npy")
         ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[
         1]*np.shape(ksp)[2], np.shape(ksp)[3]))[..., :nf_e]
-        print(np.shape(ksp))
+        print("ksp.shape = " + str(np.shape(ksp)))
         coord = np.load(fname + "coord.npy")*scale[0]
         coord = coord.reshape(
         (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[:, :nf_e, :]
         dcf_jsense = np.load(fname + "dcf.npy")
         dcf_jsense = dcf_jsense.reshape((np.shape(dcf_jsense)[0] * np.shape(dcf_jsense)[1], np.shape(dcf_jsense)[2]))[..., :nfe]
-        # mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
-        #     device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
-        mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
-            device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4, 
-                                         max_inner_iter=20, max_iter=20).run()
+        if jsense == 1:
+            # Default
+            mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
+                device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+        elif jsense == 2:
+            # New
+            mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
+                device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4, 
+                                                max_inner_iter=10, max_iter=10).run()
+        # try:
+        #     import sigpy.plot as pl
+        #     pl.ImagePlot(mps, x=1, y=2, z=0,
+        #                 title="Sensitivity maps estimated with J-SENSE")
+        #     plt.show()
+        # except:
+        #     print("Could not show the sensitivity maps.")
+            
         del(dcf_jsense, ksp, coord)
         S = sp.linop.Multiply(tshape, mps)
         print("Success.")
     except:
         # calibration
-        print('Calculating sensitivity map from binned data...')
+        print("Failed.")
+        print('Calculating sensitivity map from binned data instead...')
         ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)),
                         (nCoil, nphase*npe, nfe))
         dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
@@ -309,9 +325,6 @@ if __name__ == '__main__':
         coord = np.reshape(traj, (nphase*npe, nfe, 3))
         mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
             device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
-        # TODO: see if you get improved results without dcf (may not be possible on old sigpy)
-        # mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
-        #     device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
         del(dcf_jsense, dcf2, coord, ksp)
         S = sp.linop.Multiply(tshape, mps)
         # S = sp.linop.Multiply(tshape, np.ones((1,)+tshape)) # ONES
@@ -394,17 +407,6 @@ if __name__ == '__main__':
     # iM_fields = [reg.M_scale(M,tshape) for M in iM_fields]
 
     M_fields = np.zeros((nphase,) + tshape + (len(tshape),))
-
-    if gamma != 0:
-        # Estimate T2* decay
-        t2_star = 1.2  # ms
-        readout = 1.2*res_scale  # ms
-        dwell_time = readout/nfe
-        relaxation = np.zeros((nfe,))
-        for i in range(nfe):
-            relaxation[i] = np.exp(-(i*dwell_time)/t2_star)
-        k = np.reshape(relaxation, [1, 1, nfe])
-        dcf *= k**gamma
     
     # low rank
     print('Low rank prep...')
@@ -416,8 +418,23 @@ if __name__ == '__main__':
         else:
             # TODO test hypothesis that it is faster to have multiply.Linops with reduced point dimensions
             W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
+                
+        if gamma == 0:	        
+            FTSs = W*FTs*S	
+        else:	
+            # Estimate T2* decay	
+            t2_star = 1.2  # ms	
+            readout = 1.2*res_scale  # ms	
+            dwell_time = readout/nfe	
+            relaxation = np.zeros((nfe,))	
+            for i in range(nfe):	
+                relaxation[i] = np.exp(-(i*dwell_time)/t2_star)	
+            k = np.reshape(relaxation, [1, 1, nfe])	
+
+            K = sp.linop.Multiply(W.oshape, k**gamma)	
+            FTSs = W*K*FTs*S	
+            del(K)
         
-        FTSs = W*FTs*S
         
         PFTSs.append(FTSs)
     PFTSs = Diags(PFTSs, oshape=(nphase, nCoil, npe, nfe,),
@@ -476,28 +493,79 @@ if __name__ == '__main__':
     u0 = np.zeros_like(qt)
     z0 = np.zeros_like(qt)
 
-    rho = 1
+    rho = 0.3*1 # TODO Half me
     # def ATA(x): return 1/L*PFTSs.H*PFTSs*x + Ms.H*Ms*x
     b0 = 1/L*PFTSs.H*wdata
     res_list = []
 
-    del(S, W, FTs)
+    del(S, W, FTs)   
 
     # View convergence
     count = 0
     total_iter = sup_iter * outer_iter * iner_iter
-    # img_convergence = np.zeros(
-    #     (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
+    img_convergence = np.zeros(
+        (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
+    
+    
+    # optional - initialize starting Ms # TODO: get a better initial estimate of Ms, before doing the full MoCoLoR
+    if use_dcf == 4:
+        init_iter = 60
+    else:
+        init_iter = 10
+    try:
+        b = b0 
+        # def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b # TODO: try without rho*x
+        def grad(x): return 1/L*PFTSs.H*PFTSs*x  - b 
+        GD_step = sp.alg.GradientMethod(
+            grad, qt, .1, accelerate=False, tol=5e-7)  # default false
+        for j in range(init_iter):
+            tic = time.perf_counter()
+            GD_step.update()
+            res_norm = GD_step.resid/np.linalg.norm(qt)*GD_step.alpha
+            toc = time.perf_counter()
+            print('initializing iter:{}, res:{}, {}sec'.format(
+                j, res_norm, int(toc - tic)))
+            if res_norm < 5e-8:
+                break
+            res_list.append(res_norm)
+            # Save tmp version of recon to view while running
+            ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
+            nib.save(ni_img, fname + '/results/tmp_img_mocolor')
+        
+        # update motion field
+        M_fields = []
+        imgL = qt
+        imgL = np.abs(np.squeeze(imgL))
+        imgL = imgL/np.max(imgL)
+        for i in range(nphase):
+            M_field, iM_field = reg.ANTsReg(imgL[n_ref], imgL[i])
+            M_fields.append(M_field)
+        M_fields = np.asarray(M_fields)
+        M_fields = [M_fields[i] for i in range(M_fields.shape[0])]
+        M_fields = [reg.M_scale(M, tshape) for M in M_fields]
+        # sp.linop.Identity((nphase,)+tshape)
+        Ms = []
+        for i in range(nphase):
+            M = reg.interp_op(tshape, M_fields[i])
+            M = DLD(M, device=sp.Device(device))
+            Ms.append(M)
+        Ms = Diags(Ms, oshape=(nphase,)+tshape, ishape=(nphase,)+tshape)
+        del(M)
+    except:
+        print("Could not initialize Ms.")
+    
 
     for k in range(sup_iter):
-        for i in range(outer_iter):
-            b = b0 + rho*Ms.H*(z0 - u0)
+        for i in range(outer_iter): 
+            b = b0 + rho*Ms.H*(z0 - u0) 
             # CG_step = sp.alg.ConjugateGradient(
             #     ATA, b, qt, max_iter=iner_iter, tol=1e-7)
-            # grad = lambda x : 1/L*PFTSs.H*PFTSs*x + rho*Ms.H*Ms*x - b
-            def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b
+            # def grad(x): 1/L*PFTSs.H*PFTSs*x + rho*Ms.H*Ms*x - b # TODO: fix this bug!!
+            def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b 
             GD_step = sp.alg.GradientMethod(
                 grad, qt, .1, accelerate=False, tol=5e-7)  # default false
+            # if i or k > 0:
+            #     iner_iter = 5 # only use 5 iner_iters after the first round of motion has been estimated and first round of LR
             for j in range(iner_iter):
                 tic = time.perf_counter()
                 # CG_step.update()
@@ -512,8 +580,8 @@ if __name__ == '__main__':
                     break
                 res_list.append(res_norm)
 
-                # img_convergence[count, ...] = np.abs(
-                #     np.squeeze(qt))[0, :, :, :]  # First resp phase only
+                img_convergence[count, ...] = np.abs(
+                    np.squeeze(qt))[nphase//2, :, :, :]  # Middle resp phase only
                 count += 1
                 
                 # Save tmp version of recon to view while running
@@ -522,6 +590,11 @@ if __name__ == '__main__':
 
             z0 = np.complex64(LR(1, Ms*qt + u0))
             u0 = u0 + (Ms*qt - z0)
+            
+            # TODO TEST 20240312: only update z0 and u0 after the first Ms estimate has been made, probably relevant for higher rho and lamda
+            # if k != 0 or use_dcf != 2:
+            #     z0 = np.complex64(LR(1, Ms*qt + u0))
+            #     u0 = u0 + (Ms*qt - z0)
 
         # update motion field
         # print('Registration...')
@@ -572,10 +645,16 @@ if __name__ == '__main__':
 
     # qt = np.load(os.path.join(fname, 'mocolor_vent.npy'))
 
-    # ni_img = nib.Nifti1Image(
-    #     abs(np.moveaxis(img_convergence, 0, -1)), affine=aff)
-    # nib.save(ni_img, fname + '/results/img_convergence_' + str(nphase) +
-    #          '_bin_' + str(int(recon_resolution)) + '_resolution')
+    ni_img = nib.Nifti1Image(
+        abs(np.moveaxis(img_convergence, 0, -1)), affine=aff)
+    nib.save(ni_img, fname + '/results/img_convergence_' + str(nphase) +
+             '_bin_' + str(int(recon_resolution)) + '_resolution')
+    
+    # Remove temporary image file for storage purposes
+    try:
+        os.remove(fname + '/results/tmp_img_mocolor.nii')
+    except:
+        print("Could not remove tmp image file.")
 
     try: 
         nifti_filename = str(nphase) + '_bin_' + str(field_of_view) + 'mm_FOV_' + str(int(recon_voxel_size)) + 'mm_recon_resolution'
