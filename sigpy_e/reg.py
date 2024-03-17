@@ -39,10 +39,19 @@ def ANTsAff(If,Im,vox_res = [1,1,1], reg_level = [8,4,2], gauss_filt = [2,2,1]):
     
     reg_level_s = 'x'.join([str(t) for t in reg_level])
     gauss_filt_s = 'x'.join([str(t) for t in gauss_filt])
-    
-    ants_cmd = 'antsRegistration -d 3 -m MI[ {}, {}, 1, 50 ] -t Rigid[0.1] \
+    # Default
+    # ants_cmd = 'antsRegistration -d 3 -m MI[ {}, {}, 1, 50 ] -t Rigid[0.1] \
+    # -c [ 100x100x40, 1e-6, 10 ] -s {}vox -f {} --winsorize-image-intensities [0.1,1]\
+    # -l 1 -u 1 -z 1 -v -o tmp_'.format('tmp_Im.nii','tmp_If.nii',gauss_filt_s,reg_level_s)
+    # JWP start - using Claude3
+    # Use SyNAggro transformation
+    ants_cmd = 'antsRegistration -d 3 -m MI[ {}, {}, 1, 50 ] -t SyNAggro[0.1, 2, 0, 3] \
     -c [ 100x100x40, 1e-6, 10 ] -s {}vox -f {} --winsorize-image-intensities [0.1,1]\
-    -l 1 -u 1 -z 1 -v -o tmp_'.format('tmp_Im.nii','tmp_If.nii',gauss_filt_s,reg_level_s)
+    -l 1 -u 1 -z 1 -v -o tmp_'.format('tmp_Im.nii', 'tmp_If.nii', gauss_filt_s, reg_level_s)
+
+    # JWP end
+
+
     os.system(ants_cmd)
     x = loadmat('./tmp_0GenericAffine.mat')
     T = x['AffineTransform_double_3_3'].reshape([4,3])
@@ -108,13 +117,55 @@ def ANTsReg(If,Im,vox_res = [1,1,1], reg_level = [8,4,2], gauss_filt = [2,2,1]):
     
     tmp_dir = 'tmp{}_'.format(np.random.randint(0,1e4))
     
-    reg_dict = ants.registration(fixed, moving, type_of_transform='SyNOnly', \
-                                syn_metric='demons', syn_sampling=4, \
-                                grad_step=0.1, flow_sigma=5, total_sigma=3,\
-                                reg_iterations=(40,20,10), \
-                                verbose=False, outprefix=tmp_dir, \
-                                w='[0.1,1]')
+    # Default
+    # reg_dict = ants.registration(fixed, moving, type_of_transform='SyNOnly', \
+    #                             syn_metric='demons', syn_sampling=4, \
+    #                             grad_step=0.1, flow_sigma=5, total_sigma=3,\
+    #                             reg_iterations=(40,20,10), \
+    #                             verbose=False, outprefix=tmp_dir, \
+    #                             w='[0.1,1]')
     # -s -f -l not matched
+    
+    # JWP start
+    registration_params = {
+        'type_of_transform': 'SyNAggro',
+        'reg_iterations': (70, 70, 70),
+        'syn_sampling': 8,
+        'grad_step': 0.1,
+        'flow_sigma': 1, # Smaller = sharper registration
+        'total_sigma': 0,
+        'verbose': True,
+        'outprefix': 'synaggro_registration_'
+    }
+    reg_dict = ants.registration(fixed, moving, **registration_params)
+    # JWP end
+    
+    # FK start - imitates Filip's b-spline regularization registration
+    # registration_params = {
+    #     'type_of_transform': 'SyNAggro',
+    #     'reg_iterations': (70, 50, 40),  # Increased iterations
+    #     'syn_metric': 'CC',  # Cross-correlation metric
+    #     'syn_metric_weight': 1,
+    #     'syn_metric_radius': 4,
+    #     'syn_sampling': 6,  # Increased sampling rate
+    #     'grad_step': 1,  # Increased gradient step
+    #     'flow_sigma': 1.5,
+    #     'total_sigma': 0,
+    #     'verbose': True,
+    #     'outprefix': 'synaggro_registration_',
+    #     'winsorize_lower_quantile': 0.005,  # Winsorize lower quantile
+    #     'winsorize_upper_quantile': 0.995,  # Winsorize upper quantile
+    #     'histogram_matching': True,  # Histogram matching
+    #     'regularization': 'bspline',  # B-spline regularization
+    #     'regularization_param': (4, 40, 0.2),  # B-spline parameters
+    #     'shrink_factors': [6, 4, 2, 1],  # Shrink factors
+    #     'smoothing_sigmas': [3, 2, 1, 0],  # Smoothing sigmas
+    #     'synaggro_param': (2, 0.8, 1)  # SyNAggro parameters
+    # }
+    # reg_dict = ants.registration(fixed, moving, **registration_params)
+    # FK end
+
+    
     M_field = nibabel.load(reg_dict['fwdtransforms'][0])
     iM_field = nibabel.load(reg_dict['invtransforms'][-1])
 
@@ -322,7 +373,7 @@ class interp_op(Linop):
 def interp(I, M_field, device = sp.Device(-1), k_id = 1, deblur = True):
     # b spline interpolation
     N = 64
-    if k_id is 0:
+    if k_id == 0:
         kernel = [(3*(x/N)**3-6*(x/N)**2+4)/6 for x in range(0,N)]+[(2-x/N)**3/6 for x in range(N,2*N)]
         dkernel = np.array([-.2,1.4,-.2])
         
@@ -338,7 +389,7 @@ def interp(I, M_field, device = sp.Device(-1), k_id = 1, deblur = True):
     ndim = M_field.shape[-1]
     
     # 2d/3d
-    if ndim is 3:
+    if ndim == 3:
         dkernel = dkernel[:,None,None]*dkernel[None,:,None]*dkernel[None,None,:]
         Nx,Ny,Nz = I.shape
         my,mx,mz = np.meshgrid(np.arange(Ny),np.arange(Nx),np.arange(Nz))

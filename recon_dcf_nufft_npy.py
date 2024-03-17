@@ -12,6 +12,16 @@ import scipy.ndimage as ndimage_c
 import numpy as np
 import time
 
+
+try:
+    import readphilips as rp
+    from readphilips.file_io import io
+    import csv
+    automate_FOV = True
+except:
+    print("Could not load ReadPhilips script.")
+    automate_FOV = False
+
 import sys
 sys.path.append("./sigpy_e/")
 
@@ -26,7 +36,7 @@ parser.add_argument('--res_scale', type=float, default=.75,
 parser.add_argument('--scan_res', type=float, default=200,
                     help='scan matrix size')
 parser.add_argument('--recon_res', type=float, default=200,
-                    help='econ matrix size')
+                    help='recon matrix size')
 
 parser.add_argument('--fov_x', type=float, default=1,
                     help='scale of FOV x, full res == 1')
@@ -67,26 +77,114 @@ n_ref_vent = args.n_ref_vent
 print('Reconstruction started.')
 tic_total = time.perf_counter()
 
+def find_sin_files(directory):
+    sin_files = []
+
+    # Walk through the directory and its subdirectories
+    for foldername, subfolders, filenames in os.walk(fname):
+        for filename in filenames:
+            # Check if the file has a .sin extension
+            
+            if filename.endswith(".sin"):
+                # Get the full path of the file and add it to the list
+                sin_files.append(os.path.join(fname, filename))
+                
+                for sin_file in sin_files:
+                    print("*.sin file located: ")
+                    print(sin_file)
+    return sin_files                        
+
+try:
+    rls_file = find_sin_files(fname)[0]
+except:
+    print("Could not locate *.sin file.")
+
+if automate_FOV:
+    try:
+        rls = rp.PhilipsData(rls_file)
+        rls.readParamOnly = True
+        rls.raw_corr = False
+        rls.compute()
+        # scan_resolution = int(rls.header.get(
+        # 'sin').get('scan_resolutions')[0][0])
+        scan_resolution = 300 # Force
+        print("Automated scan_resolution = " + str(scan_resolution))
+        slice_thickness = float(rls.header.get('sin').get('slice_thickness')[0][0])
+        # field_of_view = int(slice_thickness * scan_resolution)
+        field_of_view = 480 # force
+        TR = float(rls.header.get('sin').get('repetition_times')[0][0]) 
+        TE = float(rls.header.get('sin').get('echo_times')[0][0]) 
+        flip_angle_applied = float(rls.header.get('sin').get('flip_angles')[0][0]) 
+
+        print("WARNING: forcefully overwriting recon_resolution:")
+        recon_voxel_size = 3 # mm
+        recon_resolution = field_of_view / recon_voxel_size
+        print("recon_resolution set to: " + str(recon_voxel_size))
+
+        try:
+            print("Exporting important parameters...")
+
+            important_data = {"aqcuisition_matrix": scan_resolution,
+                                "acquisition_voxel_size_mm": slice_thickness,
+                                "field_of_view_mm": field_of_view,
+                                "recon_matrix": recon_resolution,
+                                "recon_voxel_size_mm": field_of_view/recon_resolution,
+                                "repetition_time_ms": TR,
+                                "echo_time_ms": TE,
+                                "flip_angle_deg": flip_angle_applied}
+            csv_filename = fname + "results/imaging_parameters.csv"
+            with open(csv_filename, mode='w', newline='') as file:
+                writer = csv.writer(file)
+
+                # Write the header
+                writer.writerow(["Parameter", "Value"])
+
+                # Write the data
+                for key, value in important_data.items():
+                    writer.writerow([key, value])   
+
+            print("Important parameters exported successfully.")
+        except:
+            print("Could not export important parameters from *.sin file.")
+        del(rls)
+        print("Raw-Lab-Sin cleared from memory.")
+    except:
+        print("raw-lab-sin reading failed. User-defined scan resolution used instead.")
+
+
+# OPTIONAL: override res_scale
+res_scale = (recon_resolution/scan_resolution)+0.05
+print("WARNING: res_scale has been overridden. res_scale == " + str(res_scale))
+    
+    
 # data loading
 data = np.load(os.path.join(fname, 'bksp.npy'))
 traj = np.real(np.load(os.path.join(fname, 'bcoord.npy')))
-dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
+try:
+    dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf.npy')))
+    print("Philips DCF used.")
+except:
+    dcf = np.sqrt(np.load(os.path.join(fname, 'bdcf_pipemenon.npy')))
+    print("Pipe-Menon DCF used.")
 
 nf_scale = res_scale
 nf_arr = np.sqrt(np.sum(traj[0, 0, :, :]**2, axis=1))
 nf_e = np.sum(nf_arr < np.max(nf_arr)*nf_scale)
 scale = (scan_resolution, scan_resolution, scan_resolution)  # Added JWP
+# scale = fov_scale
 traj[..., 0] = traj[..., 0]*scale[0]
 traj[..., 1] = traj[..., 1]*scale[1]
 traj[..., 2] = traj[..., 2]*scale[2]
 
+# Optional: undersample along freq encoding - JWP 20230815
+print("Number of frequency encodes before trimming: " + str(data.shape[-1]))
 traj = traj[..., :nf_e, :]
 data = data[..., :nf_e]
 dcf = dcf[..., :nf_e]
 
 nphase, nCoil, npe, nfe = data.shape
-tshape = (np.int(np.max(traj[..., 0])-np.min(traj[..., 0])), np.int(np.max(
-    traj[..., 1])-np.min(traj[..., 1])), np.int(np.max(traj[..., 2])-np.min(traj[..., 2])))
+tshape = (int(np.max(traj[..., 0])-np.min(traj[..., 0])), int(np.max(
+    traj[..., 1])-np.min(traj[..., 1])), int(np.max(traj[..., 2])-np.min(traj[..., 2])))
 # Or use manual input settings
 tshape = (int(recon_resolution), int(
     recon_resolution), int(recon_resolution))
@@ -94,60 +192,7 @@ tshape = (int(recon_resolution), int(
 print('Number of phases used in this reconstruction: ' + str(nphase))
 print('Number of coils: ' + str(nCoil))
 print('Number of phase encodes: ' + str(npe))
-print('Number of frequency encodes: ' + str(nfe))
-
-# calibration
-ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)), (nCoil, nphase*npe, nfe))
-dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
-coord = np.reshape(traj, (nphase*npe, nfe, 3))
-
-mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(0), ishape=tshape)
-S = sp.linop.Multiply(tshape, mps)
-
-
-# recon
-PFTSs = []
-for i in range(nphase):
-    FTs = NFTs((nCoil,)+tshape, traj[i, ...], device=sp.Device(device))
-    W = sp.linop.Multiply((nCoil, npe, nfe,), dcf[i, :, :])
-    FTSs = W*FTs*S
-    PFTSs.append(FTSs)
-PFTSs = Diags(PFTSs, oshape=(nphase, nCoil, npe, nfe,),
-              ishape=(nphase,)+tshape)
-
-# preconditioner
-wdata = data*dcf[:, np.newaxis, :, :]
-tmp = PFTSs.H*PFTSs*np.complex64(np.ones((nphase,)+tshape))
-L = np.mean(np.abs(tmp))
-
-
-# reconstruction
-q2 = np.zeros((nphase,)+tshape, dtype=np.complex64)
-Y = np.zeros_like(wdata)
-q20 = np.zeros_like(q2)
-res_norm = np.zeros((outer_iter, 1))
-
-logging.basicConfig(level=logging.INFO)
-
-sigma = 0.4
-tau = 0.4
-for i in range(outer_iter):
-    tic = time.perf_counter()
-    Y = (Y + sigma*(1/L*PFTSs*q2-wdata))/(1+sigma)
-
-    q20 = q2
-    q2 = np.complex64(ext.TVt_prox(q2-tau*PFTSs.H*Y, lambda_TV))
-    res_norm[i] = np.linalg.norm(q2-q20)/np.linalg.norm(q2)
-    toc = time.perf_counter()
-    logging.info(' outer iter:{}, res:{}, {}sec'.format(
-        i, res_norm[i], int(toc - tic)))
-
-    # np.save(os.path.join(fname, 'prL.npy'), q2)
-    # np.save(os.path.join(fname, 'prL_residual_{}.npy'.format(lambda_TV)), res_norm)
-# q2 = np.load(os.path.join(fname, 'prL.npy'))
-
-q2 = np.abs(np.squeeze(q2))
-q2 = q2/np.max(q2)
+print('Number of frequency encodes (after trimming): ' + str(nfe))
 
 # Check whether a specified save data path exists
 results_exist = os.path.exists(fname + "/results")
@@ -160,9 +205,9 @@ if not results_exist:
 
 # Save images as Nifti files
 # Build an array using matrix multiplication
-scaling_affine = np.array([[1, 0, 0, 0],
-                            [0, 1, 0, 0],
-                            [0, 0, 1, 0],
+scaling_affine = np.array([[-1, 0, 0, 0],
+                            [0, -1, 0, 0],
+                            [0, 0, -1, 0],
                             [0, 0, 0, 1]])
 
 # Rotate gamma radians about axis i
@@ -172,8 +217,8 @@ rotation_affine_1 = np.array([[1, 0, 0, 0],
                                 [0, cos_gamma, -sin_gamma,  0],
                                 [0, sin_gamma, cos_gamma, 0],
                                 [0, 0, 0, 1]])
-cos_gamma = np.cos(np.pi)
-sin_gamma = np.sin(np.pi)
+cos_gamma = np.cos(0)
+sin_gamma = np.sin(0)
 rotation_affine_2 = np.array([[cos_gamma, 0, sin_gamma, 0],
                                 [0, 1, 0, 0],
                                 [-sin_gamma, 0, cos_gamma, 0],
@@ -196,9 +241,85 @@ translation_affine = np.array([[1, 0, 0, 0],
 # Multiply matrices together
 aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
 
+# data loading for sens map
+try:
+    print("Calculating sensitivity map from raw (unbinned) data...")
+    ksp = np.load(fname + "ksp.npy")
+    ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[
+    1]*np.shape(ksp)[2], np.shape(ksp)[3]))[..., :nf_e]
+    print(np.shape(ksp))
+    coord = np.load(fname + "coord.npy")*scale[0]
+    coord = coord.reshape(
+    (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[:, :nf_e, :]
+    dcf_jsense = np.load(fname + "dcf.npy")
+    dcf_jsense = dcf_jsense.reshape((np.shape(dcf_jsense)[0] * np.shape(dcf_jsense)[1], np.shape(dcf_jsense)[2]))[..., :nfe]
+    mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
+        device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+    # mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
+    #     device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4, 
+    #                                     max_inner_iter=20, max_iter=20).run()
+    del(dcf_jsense, ksp, coord)
+    S = sp.linop.Multiply(tshape, mps)
+    print("Success.")
+except:
+    # calibration
+    print('Calculating sensitivity map from binned data...')
+    ksp = np.reshape(np.transpose(data, (1, 0, 2, 3)),
+                    (nCoil, nphase*npe, nfe))
+    dcf2 = np.reshape(dcf**2, (nphase*npe, nfe))
+    dcf_jsense = dcf2  # Must use DCF for older SIGPY JSENSE as it solves a Cartesian problem :(
+    
+    # Default
+    # mps = ext.jsens_calib(ksp, coord, dcf2, device=sp.Device(
+    #     device), ishape=tshape, mps_ker_width=12, ksp_calib_width=24)
+    # Modified by JWP 20230828
+    coord = np.reshape(traj, (nphase*npe, nfe, 3))
+    mps = ext.jsens_calib(ksp[..., :nf_e], coord[:, :nf_e, :], dcf_jsense[..., :nf_e], device=sp.Device(
+        device), ishape=tshape, mps_ker_width=8, ksp_calib_width=16)
+    # TODO: see if you get improved results without dcf (may not be possible on old sigpy)
+    # mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
+    #     device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
+    del(dcf_jsense, dcf2, coord, ksp)
+    S = sp.linop.Multiply(tshape, mps)
+    # S = sp.linop.Multiply(tshape, np.ones((1,)+tshape)) # ONES
+
+
+# recon
+q2 = np.zeros((nphase,)+tshape, dtype=np.complex64)
+    
+def mvd(x): return sp.to_device(x, device)
+def mvc(x): return sp.to_device(x, sp.cpu_device)
+
+for i in range(nphase):
+    # Move to GPU
+    traj_tmp = mvd(traj[i,...])
+    data_tmp = mvd(data[i,...])
+    dcf_tmp = mvd(dcf[i,...]) # Input data is already in sqrt form
+    mps = mvd(mps)
+
+    # Compute linear operators
+    S = sp.linop.Multiply(tshape, mps)
+    F = sp.linop.NUFFT(mps.shape,
+                    coord=traj_tmp,
+                    oversamp=1.25,
+                    width=3)
+    D = sp.linop.Multiply(F.oshape, dcf_tmp)
+    
+    # Compute a single x = A.H b operation (i.e. inverse NUFFT)
+    A_dcf = D * F * S
+    b_dcf = data_tmp * dcf_tmp / np.linalg.norm(data_tmp * dcf_tmp)
+    q2[i,...] = mvc(abs(A_dcf.H * b_dcf))
+
+q2 = np.abs(np.squeeze(q2))
+q2 = q2/np.max(q2)
+
+try: 
+    nifti_filename = str(nphase) + '_bin_' + str(field_of_view) + 'mm_FOV_' + str(int(recon_voxel_size)) + 'mm_recon_resolution'
+except:
+    nifti_filename = str(nphase) + '_bin_' + str(int(recon_resolution)) + '_recon_matrix_size'
+
 ni_img = nib.Nifti1Image(abs(np.moveaxis(q2, 0, -1)), affine=aff)
-nib.save(ni_img, fname + '/results/img_nufft_' + str(nphase) +
-            '_bin_' + str(int(recon_resolution)) + '_resolution')
+nib.save(ni_img, fname + '/results/img_nufft_' + nifti_filename)
 
 # jacobian determinant & specific ventilation
 if vent_flag == 1:

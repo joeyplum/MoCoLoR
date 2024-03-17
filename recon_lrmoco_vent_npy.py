@@ -54,9 +54,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--res_scale', type=float, default=1,
                         help='scale of resolution, full res == 1')
-    parser.add_argument('--scan_res', type=float, default=200,
+    parser.add_argument('--scan_res', type=float, default=220,
                         help='scan matrix size')
-    parser.add_argument('--recon_res', type=float, default=200,
+    parser.add_argument('--recon_res', type=float, default=100,
                         help='recon matrix size')
 
     parser.add_argument('--fov_x', type=float, default=1,
@@ -75,18 +75,24 @@ if __name__ == '__main__':
     parser.add_argument('--mr_cflag', type=int, default=1,
                         help='Resp motion compensation')
 
+    parser.add_argument('--rho', type=float, default=1,
+                        help='ADMM rho parameter, default is ')
     parser.add_argument('--lambda_lr', type=float, default=1e-2,
                         help='low rank regularization, default is 0.01')
+    parser.add_argument('--init_iter', type=int, default=10,
+                        help='Num of initialization iterations (with no moco component).')
     parser.add_argument('--iner_iter', type=int, default=5,
                         help='Num of inner iterations.')
     parser.add_argument('--outer_iter', type=int, default=3,
                         help='Num of outer iterations.')
     parser.add_argument('--sup_iter', type=int, default=3,
                         help='Num of superior iterations.')
+    parser.add_argument('--method', type=str,
+                        help='Iterative method for inner loop (cg or gm, default = gm).')
 
     parser.add_argument('--device', type=int, default=0,
                         help='Computing device.')
-    parser.add_argument('fname', type=str,
+    parser.add_argument('fname', type=str, default='gm',
                         help='Prefix of raw data and output(_mocolor).')
     # a set of CFL files, including(kspace, trajectory, and density_compensation_weighting)
     args = parser.parse_args()
@@ -101,9 +107,12 @@ if __name__ == '__main__':
     fname = args.fname
     lambda_lr = args.lambda_lr
     device = args.device
+    rho = args.rho
+    init_iter = args.init_iter
     outer_iter = args.outer_iter
     iner_iter = args.iner_iter
     sup_iter = args.sup_iter
+    method = args.method
     fov_scale = (args.fov_x, args.fov_y, args.fov_z)
     n_ref = args.n_ref
     reg_flag = args.reg_flag
@@ -276,6 +285,8 @@ if __name__ == '__main__':
 
     # Multiply matrices together
     aff = translation_affine.dot(rotation_affine.dot(scaling_affine))
+    print("Affine transformation matrix used for saving this data: ")
+    print(str(aff))
 
     # data loading for sens map
     try:
@@ -298,13 +309,6 @@ if __name__ == '__main__':
             mps = mr.app.JsenseRecon_UPDATED(y=ksp[..., :nf_e], coord=coord[:, :nf_e, :], device=sp.Device(
                 device), img_shape=tshape, mps_ker_width=14, ksp_calib_width=24, lamda=1e-4, 
                                                 max_inner_iter=10, max_iter=10).run()
-        # try:
-        #     import sigpy.plot as pl
-        #     pl.ImagePlot(mps, x=1, y=2, z=0,
-        #                 title="Sensitivity maps estimated with J-SENSE")
-        #     plt.show()
-        # except:
-        #     print("Could not show the sensitivity maps.")
             
         del(dcf_jsense, ksp, coord)
         S = sp.linop.Multiply(tshape, mps)
@@ -328,6 +332,15 @@ if __name__ == '__main__':
         del(dcf_jsense, dcf2, coord, ksp)
         S = sp.linop.Multiply(tshape, mps)
         # S = sp.linop.Multiply(tshape, np.ones((1,)+tshape)) # ONES
+        
+    # Visualize estimated sensitivity maps    
+    # try:
+    #     import sigpy.plot as pl
+    #     pl.ImagePlot(mps, x=1, y=2, z=0,
+    #                 title="Sensitivity maps estimated with J-SENSE")
+    #     plt.show()
+    # except:
+    #     print("Could not show the sensitivity maps.")
 
 
     print('Density compensation...')
@@ -346,7 +359,6 @@ if __name__ == '__main__':
         np.save(fname + "bdcf_pipemenon.npy", dcf)
         dcf = dcf**0.5
     elif use_dcf == 3:
-        # TODO: kspace conditioner - make robust for proton (not done yet)
         dcf = np.zeros_like(dcf)
         print("Attempting k-space preconditoner calculation, as per Ong, et. al.,...")
         for i in range(nphase):
@@ -368,7 +380,7 @@ if __name__ == '__main__':
             #                                     device), img_shape=tshape, 
             #                                      mps_ker_width=14, ksp_calib_width=24, lamda=1e-4).run()
             p = sp.to_device(mr.kspace_precond(
-                mps,
+                mps, # mps_tmp,
                 coord=sp.to_device(traj[i, ...], device),
                 device=sp.Device(device), lamda=1e-3), -1)
             dcf[i, ...] = p # Use all channels here
@@ -466,7 +478,7 @@ if __name__ == '__main__':
     print('Preconditioner calculation...')
     tmp = FTSs.H*FTSs*np.complex64(np.ones(tshape))
     L = np.mean(np.abs(tmp))
-    print("Preconditioner: L, using MoCoLoR: " + str(L))
+    print("Preconditioner: L, using mean of A^N of np.ones(): " + str(L))
     L = sp.app.MaxEig(FTSs.H*FTSs, dtype=np.complex64,
                       device=sp.Device(-1)).run() * 1.01
     # data /= np.linalg.norm(data)
@@ -478,7 +490,8 @@ if __name__ == '__main__':
     tmp = np.fft.fftshift(tmp)
     tmp = FTSs.H*FTSs*np.complex64(tmp)
     tmp = np.fft.ifftshift(tmp)
-    # TODO condition number calc
+    
+    print("Data preparation...")
     if use_dcf == 4:
         wdata = data*dcf
     else:
@@ -493,28 +506,14 @@ if __name__ == '__main__':
     u0 = np.zeros_like(qt)
     z0 = np.zeros_like(qt)
 
-    rho = 0.3*1 # TODO Half me
-    # def ATA(x): return 1/L*PFTSs.H*PFTSs*x + Ms.H*Ms*x
     b0 = 1/L*PFTSs.H*wdata
     res_list = []
 
-    del(S, W, FTs)   
-
-    # View convergence
-    count = 0
-    total_iter = sup_iter * outer_iter * iner_iter
-    img_convergence = np.zeros(
-        (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
-    
+    del(S, W, FTs)       
     
     # optional - initialize starting Ms # TODO: get a better initial estimate of Ms, before doing the full MoCoLoR
-    if use_dcf == 4:
-        init_iter = 60
-    else:
-        init_iter = 10
     try:
         b = b0 
-        # def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b # TODO: try without rho*x
         def grad(x): return 1/L*PFTSs.H*PFTSs*x  - b 
         GD_step = sp.alg.GradientMethod(
             grad, qt, .1, accelerate=False, tol=5e-7)  # default false
@@ -532,70 +531,21 @@ if __name__ == '__main__':
             ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
             nib.save(ni_img, fname + '/results/tmp_img_mocolor')
         
-        # update motion field
-        M_fields = []
-        imgL = qt
-        imgL = np.abs(np.squeeze(imgL))
-        imgL = imgL/np.max(imgL)
-        for i in range(nphase):
-            M_field, iM_field = reg.ANTsReg(imgL[n_ref], imgL[i])
-            M_fields.append(M_field)
-        M_fields = np.asarray(M_fields)
-        M_fields = [M_fields[i] for i in range(M_fields.shape[0])]
-        M_fields = [reg.M_scale(M, tshape) for M in M_fields]
-        # sp.linop.Identity((nphase,)+tshape)
-        Ms = []
-        for i in range(nphase):
-            M = reg.interp_op(tshape, M_fields[i])
-            M = DLD(M, device=sp.Device(device))
-            Ms.append(M)
-        Ms = Diags(Ms, oshape=(nphase,)+tshape, ishape=(nphase,)+tshape)
-        del(M)
     except:
-        print("Could not initialize Ms.")
+        print("Could not initialize qt.")
     
+    # Define ATA(x) for use in conjugate gradient descent
+    def ATA(x): return 1/L*PFTSs.H*PFTSs*x + Ms.H*Ms*x
+    
+    # View convergence
+    count = 0
+    total_iter = sup_iter * outer_iter * iner_iter
+    img_convergence = np.zeros(
+        (total_iter, int(recon_resolution), int(recon_resolution), int(recon_resolution)), dtype=float)
+
 
     for k in range(sup_iter):
-        for i in range(outer_iter): 
-            b = b0 + rho*Ms.H*(z0 - u0) 
-            # CG_step = sp.alg.ConjugateGradient(
-            #     ATA, b, qt, max_iter=iner_iter, tol=1e-7)
-            # def grad(x): 1/L*PFTSs.H*PFTSs*x + rho*Ms.H*Ms*x - b # TODO: fix this bug!!
-            def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b 
-            GD_step = sp.alg.GradientMethod(
-                grad, qt, .1, accelerate=False, tol=5e-7)  # default false
-            # if i or k > 0:
-            #     iner_iter = 5 # only use 5 iner_iters after the first round of motion has been estimated and first round of LR
-            for j in range(iner_iter):
-                tic = time.perf_counter()
-                # CG_step.update()
-                GD_step.update()
-                # qt = qt - 0.2*(1/L*PFTSs.H*(PFTSs*qt - wdata) + Ms.H*(Ms*qt - z0 + u0))
-                # res_norm = CG_step.resid/np.linalg.norm(qt)*CG_step.alpha
-                res_norm = GD_step.resid/np.linalg.norm(qt)*GD_step.alpha
-                toc = time.perf_counter()
-                print('superior iter:{}, outer iter:{}, inner iter:{}, res:{}, {}sec'.format(
-                    k, i, j, res_norm, int(toc - tic)))
-                if res_norm < 5e-8:
-                    break
-                res_list.append(res_norm)
-
-                img_convergence[count, ...] = np.abs(
-                    np.squeeze(qt))[nphase//2, :, :, :]  # Middle resp phase only
-                count += 1
-                
-                # Save tmp version of recon to view while running
-                ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
-                nib.save(ni_img, fname + '/results/tmp_img_mocolor')
-
-            z0 = np.complex64(LR(1, Ms*qt + u0))
-            u0 = u0 + (Ms*qt - z0)
-            
-            # TODO TEST 20240312: only update z0 and u0 after the first Ms estimate has been made, probably relevant for higher rho and lamda
-            # if k != 0 or use_dcf != 2:
-            #     z0 = np.complex64(LR(1, Ms*qt + u0))
-            #     u0 = u0 + (Ms*qt - z0)
-
+        
         # update motion field
         # print('Registration...')
         M_fields = []
@@ -638,7 +588,61 @@ if __name__ == '__main__':
             # M0s.append(M0)
         Ms = Diags(Ms, oshape=(nphase,)+tshape, ishape=(nphase,)+tshape)
         # M0s = Diags(M0s,oshape=(nphase,)+tshape,ishape=(nphase,)+tshape)
+        
+        for i in range(outer_iter): 
+            b = b0 + rho*Ms.H*(z0 - u0) 
+            if method == "cg":
+                CG_step = sp.alg.ConjugateGradient(
+                    ATA, b, qt, max_iter=iner_iter, tol=1e-7)
+                for j in range(iner_iter):
+                    tic = time.perf_counter()
+                    CG_step.update()
+                    res_norm = CG_step.resid/np.linalg.norm(qt)*CG_step.alpha
+                    toc = time.perf_counter()
+                    print('superior iter:{}, outer iter:{}, inner iter:{}, res:{}, {}sec'.format(
+                        k, i, j, res_norm, int(toc - tic)))
+                    if res_norm < 5e-8:
+                        break
+                    res_list.append(res_norm)
 
+                    img_convergence[count, ...] = np.abs(
+                        np.squeeze(qt))[nphase//2, :, :, :]  # Middle resp phase only
+                    count += 1
+                    
+                    # Save tmp version of recon to view while running
+                    ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
+                    nib.save(ni_img, fname + '/results/tmp_img_mocolor')
+                    
+            elif method == "gm":
+                # def grad(x): 1/L*PFTSs.H*PFTSs*x + rho*Ms.H*Ms*x - b # TODO: fix this bug!!
+                def grad(x): return 1/L*PFTSs.H*PFTSs*x + rho*x - b 
+                GD_step = sp.alg.GradientMethod(
+                    grad, qt, .1, accelerate=False, tol=5e-7)  # default false
+                for j in range(iner_iter):
+                    tic = time.perf_counter()
+                    GD_step.update()
+                    # qt = qt - 0.2*(1/L*PFTSs.H*(PFTSs*qt - wdata) + Ms.H*(Ms*qt - z0 + u0)) # Manual method
+                    res_norm = GD_step.resid/np.linalg.norm(qt)*GD_step.alpha
+                    toc = time.perf_counter()
+                    print('superior iter:{}, outer iter:{}, inner iter:{}, res:{}, {}sec'.format(
+                        k, i, j, res_norm, int(toc - tic)))
+                    if res_norm < 5e-8:
+                        break
+                    res_list.append(res_norm)
+
+                    img_convergence[count, ...] = np.abs(
+                        np.squeeze(qt))[nphase//2, :, :, :]  # Middle resp phase only
+                    count += 1
+                    
+                    # Save tmp version of recon to view while running
+                    ni_img = nib.Nifti1Image(abs(np.moveaxis(qt, 0, -1)), affine=aff)
+                    nib.save(ni_img, fname + '/results/tmp_img_mocolor')
+            else:
+                 print("Improper convex optimization method selected.")
+                    
+            z0 = np.complex64(LR(1, Ms*qt + u0))
+            u0 = u0 + (Ms*qt - z0)
+            
         # np.save(os.path.join(fname, 'mocolor_vent.npy'), qt)
         # np.save(os.path.join(fname, 'mocolor_vent_residual.npy'),
         #         np.asarray(res_list))
@@ -657,7 +661,7 @@ if __name__ == '__main__':
         print("Could not remove tmp image file.")
 
     try: 
-        nifti_filename = str(nphase) + '_bin_' + str(field_of_view) + 'mm_FOV_' + str(int(recon_voxel_size)) + 'mm_recon_resolution'
+        nifti_filename = str(method) + '_' + str(nphase) + '_bin_' + str(field_of_view) + 'mm_FOV_' + str(int(recon_voxel_size)) + 'mm_recon_resolution'
     except:
         nifti_filename = str(nphase) + '_bin_' + str(int(recon_resolution)) + '_recon_matrix_size'
 
