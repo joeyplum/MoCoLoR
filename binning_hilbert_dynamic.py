@@ -88,11 +88,26 @@ if __name__ == "__main__":
     waveform_normalized = normalize_data(waveform)
 
     # Smooth motion waveform
-    sos = scipy.signal.iirfilter(1, Wn=[0.001, 1], fs=500/5, btype="bandpass",
-                                 ftype="butter", output="sos")
-    waveform_filt = scipy.signal.sosfilt(sos, waveform)
-    # waveform_filt = scipy.signal.medfilt(waveform,3) # median filter
-
+    # Bandpass
+    # Default - works well most the time
+    # sos = scipy.signal.iirfilter(1, Wn=[0.001, 1], fs=500/3, btype="bandpass",
+    #                              ftype="butter", output="sos")
+    # Uncomment for rapid or noisy waveform
+    # sos = scipy.signal.iirfilter(9, Wn=[0.001, 1], fs=500/3, btype="bandpass",
+    #                              ftype="butter", output="sos")
+    # waveform_filt = scipy.signal.sosfiltfilt(sos, waveform)
+        
+    # Apply phase offset (optional if waveform looks offset from filter)
+    # waveform_filt_backward = scipy.signal.sosfilt(sos, np.flip(waveform_filt))
+    # waveform_filt = np.flip(waveform_filt_backward)
+    
+    # Median filter
+    # waveform_filt = scipy.signal.medfilt(waveform,31) # median filter
+    
+    # Moving average
+    window_size_ma = 121  # Moving average window size
+    waveform_filt = np.convolve(waveform, np.ones(window_size_ma) / window_size_ma, mode='same')
+    
     if show_plot == 1:
         fig = plt.figure(figsize=(15, 4), dpi=100)
         plt.plot(sp.to_device(
