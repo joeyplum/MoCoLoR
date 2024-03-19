@@ -40,7 +40,7 @@ if __name__ == "__main__":
                         help='enter index of first excitation (if you want to subset). Default == None.')
     parser.add_argument('--exc_end', type=int, default=None,
                         help='enter index of final excitation (if you want to subset). Default == None.')
-    
+
     args = parser.parse_args()
 
     N_bins = args.nbins
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         print('Unexpected motion data dimensions.')
     waveform = np.reshape(motion_load, (np.shape(motion_load)[
         0]*np.shape(motion_load)[1]))
-    
+
     if start_excitation is not None:
         start_excitation = start_excitation
     else:
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         end_excitation = np.shape(motion_load)[0]*np.shape(motion_load)[1]
 
     excitation_range = np.arange(start_excitation, end_excitation)
-    
+
     # Subset
     waveform = waveform[excitation_range]
 
@@ -96,18 +96,19 @@ if __name__ == "__main__":
     # sos = scipy.signal.iirfilter(9, Wn=[0.001, 1], fs=500/3, btype="bandpass",
     #                              ftype="butter", output="sos")
     # waveform_filt = scipy.signal.sosfiltfilt(sos, waveform)
-        
+
     # Apply phase offset (optional if waveform looks offset from filter)
     # waveform_filt_backward = scipy.signal.sosfilt(sos, np.flip(waveform_filt))
     # waveform_filt = np.flip(waveform_filt_backward)
-    
+
     # Median filter
     # waveform_filt = scipy.signal.medfilt(waveform,31) # median filter
-    
+
     # Moving average
     window_size_ma = 121  # Moving average window size
-    waveform_filt = np.convolve(waveform, np.ones(window_size_ma) / window_size_ma, mode='same')
-    
+    waveform_filt = np.convolve(waveform, np.ones(
+        window_size_ma) / window_size_ma, mode='same')
+
     if show_plot == 1:
         fig = plt.figure(figsize=(15, 4), dpi=100)
         plt.plot(sp.to_device(
@@ -127,22 +128,22 @@ if __name__ == "__main__":
         for foldername, subfolders, filenames in os.walk(folder):
             for filename in filenames:
                 # Check if the file has a .sin extension
-                
+
                 if filename.endswith(".sin"):
                     # Get the full path of the file and add it to the list
                     sin_files.append(os.path.join(folder, filename))
-                    
+
                     for sin_file in sin_files:
                         print("*.sin file located: ")
                         print(sin_file)
-        return sin_files                        
+        return sin_files
 
     rls_file = find_sin_files(folder)[0]
     rls = rp.PhilipsData(rls_file)
     rls.readParamOnly = True
     rls.raw_corr = False
     rls.compute()
-    TR = 1e-3 * float(rls.header.get('sin').get('repetition_times')[0][0]) 
+    TR = 1e-3 * float(rls.header.get('sin').get('repetition_times')[0][0])
 
     # Start binning
     binner = hb(waveform_filt)
@@ -155,7 +156,7 @@ if __name__ == "__main__":
         # Calculate the midpoint of the segment
         midpoint = i * segment_length + segment_length / 2
         midpoints.append(midpoint)
-    
+
     csv_filename = folder + "results/binning_times.csv"
     with open(csv_filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
@@ -163,9 +164,8 @@ if __name__ == "__main__":
         writer.writerow(['respiratory_bin', 'mid_time_seconds'])
         for i, midpoint in enumerate(midpoints):
             writer.writerow([i, midpoint])
-    
 
-    binner.sort_dynamic_bin(N_bins, N_projections, stdev=2) # stdev=0.5-4 ish
+    binner.sort_dynamic_bin(N_bins, N_projections, stdev=2)  # stdev=0.5-4 ish
     if show_plot == 1:
         binner.plot_dynamic_bin(N_bins)
         plt.suptitle("Respiratory binning for N = " +
@@ -202,13 +202,14 @@ if __name__ == "__main__":
     # Load data
     ksp = np.load(folder + "ksp.npy")
     ksp = np.reshape(ksp, (np.shape(ksp)[0], np.shape(ksp)[
-        1]*np.shape(ksp)[2], np.shape(ksp)[3]))[:,excitation_range,:]
+        1]*np.shape(ksp)[2], np.shape(ksp)[3]))[:, excitation_range, :]
     print(np.shape(ksp))
     coord = np.load(folder + "coord.npy")
     coord = coord.reshape(
-        (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[excitation_range,...]
+        (np.shape(coord)[0]*np.shape(coord)[1], np.shape(coord)[2], np.shape(coord)[3]))[excitation_range, ...]
     dcf = np.load(folder + "dcf.npy")
-    dcf = dcf.reshape((np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))[excitation_range,...]
+    dcf = dcf.reshape(
+        (np.shape(dcf)[0] * np.shape(dcf)[1], np.shape(dcf)[2]))[excitation_range, ...]
 
 
 # Subset
@@ -218,7 +219,23 @@ coord_save = np.zeros((N_bins, k, np.shape(coord)[1], np.shape(coord)[2]))
 # coord_save += 5 # Add 5 to initial array so that all the "empty points" are dumped on far edges of k-space
 dcf_save = np.zeros((N_bins, k,  np.shape(dcf)[1]), dtype="complex")
 
+# Initialize strorage for the mean waveform value for each bin
+k_mean = np.zeros(N_bins)
 for gate_number in range(N_bins):
+    subset = resp_gated[int(gate_number)]
+    # Estimate mean resp_waveform value for each bin (to work out where max-insp/exp is located)
+    k_mean[gate_number] = np.mean(waveform_filt[subset])
+
+print("Mean waveform value for each bin (before circshifting): " + str(k_mean))
+indices = np.arange(N_bins)
+max_index = np.argmin(k_mean)
+circshifted_indices = np.roll(indices, -max_index)
+
+print("New order of bin indices if first bin is the max expiration: " +
+      str(circshifted_indices))
+
+for ii in range(N_bins):
+    gate_number = circshifted_indices[ii]
     subset = resp_gated[int(gate_number)]
 
     # Select only a subset of trajectories and data
@@ -236,6 +253,7 @@ for gate_number in range(N_bins):
     dcf_subset = dcf[subset, ...]
     dcf_subset = dcf_subset[random_k, ...]
     dcf_save[gate_number, ...] = dcf_subset
+
 
 print("Saving data using with the following dimensions...")
 np.save(folder + "bksp.npy", ksp_save)
