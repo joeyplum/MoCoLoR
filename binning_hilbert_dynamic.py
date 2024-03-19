@@ -227,12 +227,15 @@ for gate_number in range(N_bins):
     k_mean[gate_number] = np.mean(waveform_filt[subset])
 
 print("Mean waveform value for each bin (before circshifting): " + str(k_mean))
-indices = np.arange(N_bins)
-max_index = np.argmin(k_mean)
-circshifted_indices = np.roll(indices, -max_index)
-
-print("New order of bin indices if first bin is the max expiration: " +
-      str(circshifted_indices))
+reorder = False
+if reorder:
+    indices = np.arange(N_bins)
+    max_index = np.argmin(k_mean)
+    circshifted_indices = np.roll(indices, -max_index)
+    print("New order of bin indices if first bin is the max expiration: " +
+          str(circshifted_indices))
+else:
+    circshifted_indices = np.arange(N_bins)
 
 for ii in range(N_bins):
     gate_number = circshifted_indices[ii]
