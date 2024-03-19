@@ -40,6 +40,8 @@ if __name__ == "__main__":
                         help='enter index of first excitation (if you want to subset). Default == None.')
     parser.add_argument('--exc_end', type=int, default=None,
                         help='enter index of final excitation (if you want to subset). Default == None.')
+    parser.add_argument('--reorder', type=int, default=0,
+                        help='reorder bins to start from min mean waveform value or max k0? Default == 0, no, 1==waveform, 2==k0')
 
     args = parser.parse_args()
 
@@ -49,6 +51,7 @@ if __name__ == "__main__":
     N_projections = args.nprojections
     start_excitation = args.exc_start
     end_excitation = args.exc_end
+    reorder = args.reorder
 
     # Check whether a specified save data path exists
     results_exist = os.path.exists(folder + "/results")
@@ -220,20 +223,33 @@ coord_save = np.zeros((N_bins, k, np.shape(coord)[1], np.shape(coord)[2]))
 dcf_save = np.zeros((N_bins, k,  np.shape(dcf)[1]), dtype="complex")
 
 # Initialize strorage for the mean waveform value for each bin
-k_mean = np.zeros(N_bins)
+wf_mean = np.zeros(N_bins)
+k0_mean = np.zeros(N_bins)
 for gate_number in range(N_bins):
     subset = resp_gated[int(gate_number)]
     # Estimate mean resp_waveform value for each bin (to work out where max-insp/exp is located)
-    k_mean[gate_number] = np.mean(waveform_filt[subset])
+    wf_mean[gate_number] = np.mean(waveform_filt[subset])
+    k0_mean[gate_number] = np.mean(abs(ksp[:, subset, 0]))
 
-print("Mean waveform value for each bin (before circshifting): " + str(k_mean))
-reorder = False
-if reorder:
+
+print("Mean waveform value for each bin (before circshifting): ")
+print(wf_mean)
+print("Mean k0 value for each bin (before circshifting): ")
+print(k0_mean)
+
+if reorder == 1:
     indices = np.arange(N_bins)
-    max_index = np.argmin(k_mean)
+    max_index = np.argmin(wf_mean)
     circshifted_indices = np.roll(indices, -max_index)
-    print("New order of bin indices if first bin is the max expiration: " +
-          str(circshifted_indices))
+    print("New order of bin indices if first bin is the max expiration according to mean waveform: ")
+    print(circshifted_indices)
+elif reorder == 2:
+    indices = np.arange(N_bins)
+    max_index = np.argmax(k0_mean)
+    circshifted_indices = np.roll(indices, -max_index)
+    print("New order of bin indices if first bin is the max expiration according to mean k0: ")
+    print(circshifted_indices)
+          
 else:
     circshifted_indices = np.arange(N_bins)
 
@@ -249,13 +265,13 @@ for ii in range(N_bins):
     # random_k = np.random.choice(ksp_subset.shape[1], k, replace=True)
     # print("WARNING: np.random.choice(..., replace=True): REPLACING VALUES = TRUE.")
     ksp_subset = ksp_subset[:, random_k, :]
-    ksp_save[gate_number, :, :, :] = ksp_subset
+    ksp_save[ii, :, :, :] = ksp_subset
     coord_subset = coord[subset, ...]
     coord_subset = coord_subset[random_k, ...]
-    coord_save[gate_number, ...] = coord_subset
+    coord_save[ii, ...] = coord_subset
     dcf_subset = dcf[subset, ...]
     dcf_subset = dcf_subset[random_k, ...]
-    dcf_save[gate_number, ...] = dcf_subset
+    dcf_save[ii, ...] = dcf_subset
 
 
 print("Saving data using with the following dimensions...")
