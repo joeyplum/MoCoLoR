@@ -5,7 +5,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from scipy.signal import hilbert, find_peaks
 from scipy.optimize import curve_fit
 from scipy.ndimage import median_filter
-
+# plt.style.use('dark_background')
 
 class HilbertBinning:
     """
@@ -31,7 +31,10 @@ class HilbertBinning:
 
     def __init__(self, signal, smoothing=130):
         # Smooth signal with an average filter
-        self.signal = np.convolve(signal, np.ones(smoothing), mode='same')
+        if smoothing==None:
+            self.signal = signal
+        else:
+            self.signal = np.convolve(signal, np.ones(smoothing), mode='same')
 
         # Hilbert transform
         signal_hilbert = hilbert(signal)
@@ -62,8 +65,8 @@ class HilbertBinning:
         self.amp_err = stdev[0]
 
     def breathing_rate(self, TR=3.71655E-3): # Default TR estimated from average of lots of subjects
-        peaks, peak_props = find_peaks(self.signal)
-        vals, val_props = find_peaks(-1 * self.signal)
+        peaks, peak_props = find_peaks(self.signal, prominence=4000,distance=500)
+        vals, val_props = find_peaks(-1 * self.signal, prominence=4000,distance=500)
 
         print("TR: " + str(TR) + " seconds.")
         print("Total peaks: " + str(peaks.shape[0]))
@@ -323,7 +326,7 @@ class HilbertBinning:
 
     def plot_dynamic_bin(self, n_bins):
         hsv = matplotlib.colormaps['prism']
-        color = [[0.5, 0.5, 0.5]]
+        color = [[1, 1, 1]] # 1 = white, 0 = black
         for i in range(self.n_bins):
             color.append(hsv(i/self.n_bins))
 
@@ -342,12 +345,22 @@ class HilbertBinning:
             axs[1, 0].scatter(self.phase[self.bin_hot[:, i]],
                               self.signal[self.bin_hot[:, i]], color=color[i], s=0.5, alpha=1)
 
+         # Adding labels to subplots
+        axs[0, 0].set_ylabel('Respiratory motion', fontsize=15)
+        axs[1, 0].set_ylabel('Respiratory motion', fontsize=15)
+        axs[0, 0].set_xlabel('Excitation number', fontsize=15)
+        axs[1, 0].set_xlabel('Phase', fontsize=15)
+        axs[0, 0].set_yticklabels([])
+        axs[1, 0].set_yticklabels([])        
+        
         scale_vector = np.arange(self.n_bins+1)
         scale_vector[0] = 1
         scale_matrix = np.tile(
             scale_vector, [self.signal.size, 1])  # for colormapping
         axbig.imshow(np.multiply(self.bin_hot[self.order], scale_matrix)[
-                     :, 1:], cmap=cmap, aspect='auto', interpolation='none')
+                     :, 1:].transpose(), cmap=cmap, aspect='auto', interpolation='none')
+        # plt.gcf().set_facecolor("lightgray")
 
-        plt.xlabel('Bin')
-        plt.ylabel('Phase')
+        plt.ylabel('Respiratory bin', fontsize=15)
+        plt.xlabel('Excitation number', fontsize=15)
+        
