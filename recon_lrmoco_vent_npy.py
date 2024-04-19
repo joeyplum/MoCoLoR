@@ -54,9 +54,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--res_scale', type=float, default=1,
                         help='scale of resolution, full res == 1')
-    parser.add_argument('--scan_res', type=float, default=220,
+    parser.add_argument('--scan_res', type=float, default=300,
                         help='scan matrix size')
-    parser.add_argument('--recon_res', type=float, default=100,
+    parser.add_argument('--recon_res', type=float, default=160,
                         help='recon matrix size')
 
     parser.add_argument('--fov_x', type=float, default=1,

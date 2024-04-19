@@ -33,9 +33,9 @@ parser = argparse.ArgumentParser(description='XD-GRASP recon.')
 
 parser.add_argument('--res_scale', type=float, default=.75,
                     help='scale of resolution, full res == .75')
-parser.add_argument('--scan_res', type=float, default=200,
+parser.add_argument('--scan_res', type=float, default=300,
                     help='scan matrix size')
-parser.add_argument('--recon_res', type=float, default=200,
+parser.add_argument('--recon_res', type=float, default=160,
                     help='recon matrix size')
 
 parser.add_argument('--fov_x', type=float, default=1,
