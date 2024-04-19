@@ -10,6 +10,7 @@ import csv
 import matplotlib
 import matplotlib.pyplot as plt
 plt.style.use("dark_background")
+# plt.style.use("default")
 matplotlib.use('TkAgg')
 
 try:
@@ -108,7 +109,7 @@ if __name__ == "__main__":
     # waveform_filt = scipy.signal.medfilt(waveform,31) # median filter
 
     # Moving average
-    window_size_ma = 121  # Moving average window size
+    window_size_ma = 91  # Moving average window size, larger val = more smoothing
     waveform_filt = np.convolve(waveform, np.ones(
         window_size_ma) / window_size_ma, mode='same')
 
@@ -149,6 +150,7 @@ if __name__ == "__main__":
     TR = 1e-3 * float(rls.header.get('sin').get('repetition_times')[0][0])
 
     # Start binning
+    # binner = hb(waveform_filt, smoothing=window_size_ma)
     binner = hb(waveform_filt)
 
     # Work out breathing parameters
